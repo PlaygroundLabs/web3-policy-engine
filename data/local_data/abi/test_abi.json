@@ -1,0 +1,25 @@
+{
+    "abi": [
+        {
+            "constant": false,
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "_arg1",
+                    "type": "uint256"
+                }
+            ],
+            "name": "testmethod1",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "_out",
+                    "type": "uint256"
+                }
+            ],
+            "payable": false,
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }
+    ]
+}
