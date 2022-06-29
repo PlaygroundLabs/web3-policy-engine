@@ -19,7 +19,7 @@ contract_types = {
 
 
 
-class ABI_Method:
+class ContractMethod:
     def __init__(self, name: str, inputs: list[dict[str, str]]):
         self.name = name
         self.input_types = [item["type"] for item in inputs if "type" in item.keys()]
@@ -30,20 +30,22 @@ class ABI_Method:
         return Web3.keccak(text=f"{self.name}({inputs})")[:4]
 
 
-class ABI:
-    def __init__(self, name: str, methods: list[ABI_Method]):
+class Contract:
+    def __init__(self, name: str, methods: list[ContractMethod]):
         self.name = name
         self.methods = {method.hash(): method for method in methods}
         self.method_names = {method.name: method for method in methods}
 
 
-def ABI_from_json(name: str, filename: str) -> ABI:
-    with open(filename, "r") as file_handle:
-        data = json.load(file_handle)
-        methods = []
-        for method in data["abi"]:
-            methods.append(ABI_Method(method["name"], method["inputs"]))
-        return ABI(name, methods)
+    @classmethod
+    def from_json(cls, name: str, filename: str): # returns Contract
+        # NOTE: typing.Self didn't work
+        with open(filename, "r") as file_handle:
+            data = json.load(file_handle)
+            methods = []
+            for method in data["abi"]:
+                methods.append(ContractMethod(method["name"], method["inputs"]))
+            return cls(name, methods)
 
 
 class InputTransaction:
@@ -65,8 +67,8 @@ class ParsedTransaction:
         self,
         to: HexBytes,
         data: HexBytes,
-        contractType: ABI,
-        method: ABI_Method,
+        contractType: Contract,
+        method: ContractMethod,
         args: list[Any], # anything defined in contract_types
     ):
         self.to = to
