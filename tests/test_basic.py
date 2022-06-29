@@ -1,7 +1,7 @@
 from unittest import TestCase
 from hexbytes import HexBytes
 
-from web3_policy_engine.schemas import Contract, ContractMethod, InputTransaction
+from web3_policy_engine.contract_common import Contract, ContractMethod, InputTransaction
 from web3_policy_engine.parse_transaction import Parser
 
 

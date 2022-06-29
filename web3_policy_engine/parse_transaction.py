@@ -2,7 +2,7 @@ from hexbytes import HexBytes
 
 # from eth_abi import decode
 
-from .schemas import InputTransaction, ParsedTransaction, Contract, contract_types
+from .contract_common import InputTransaction, ParsedTransaction, Contract, contract_types
 
 
 class Parser:
