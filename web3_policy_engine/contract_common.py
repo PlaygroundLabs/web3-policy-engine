@@ -1,51 +1,37 @@
 import json
+from multiprocessing.sharedctypes import Value
+from web3.contract import Contract, ContractFunction
+from web3.auto import w3
 from web3 import Web3
 from hexbytes import HexBytes
-from typing import Any, Callable
+from typing import Any, Type
 
+def contract_from_json(filename: str) -> Type[Contract]:
+    with open(filename, "r") as file_handle:
+        data = json.load(file_handle)
+        return w3.eth.contract(abi=data["abi"])
 
-class ContractType:
-    def __init__(self, size : int, convert : Callable[[HexBytes], Any]):
-        """
-        typedef for allowed input types to functions
-        """
-        self.size = size
-        self.convert = convert
+def method_signature(method : ContractFunction) -> HexBytes:
+    if method.contract_abi is None:
+        raise ValueError("contract_abi is None")
 
-contract_types = {
-    "uint256" : ContractType(256//8, Web3.toInt),
-    "address" : ContractType(20, Web3.toBytes)
-}
+    method_abi = None
+    for item in method.contract_abi:
+        if "name" in item and item["name"] == method.fn_name:
+            method_abi = item
+            break
 
+    if method_abi is None:
+        raise ValueError(f"Method {method.fn_name} not found in abi")
 
-
-class ContractMethod:
-    def __init__(self, name: str, inputs: list[dict[str, str]]):
-        self.name = name
-        self.input_types = [item["type"] for item in inputs if "type" in item.keys()]
-        self.input_names = [item["name"] for item in inputs if "name" in item.keys()]
-
-    def hash(self) -> HexBytes:
-        inputs = ",".join(self.input_types)
-        return Web3.keccak(text=f"{self.name}({inputs})")[:4]
-
-
-class Contract:
-    def __init__(self, name: str, methods: list[ContractMethod]):
-        self.name = name
-        self.methods = {method.hash(): method for method in methods}
-        self.method_names = {method.name: method for method in methods}
-
-
-    @classmethod
-    def from_json(cls, name: str, filename: str): # returns Contract
-        # NOTE: typing.Self didn't work
-        with open(filename, "r") as file_handle:
-            data = json.load(file_handle)
-            methods = []
-            for method in data["abi"]:
-                methods.append(ContractMethod(method["name"], method["inputs"]))
-            return cls(name, methods)
+    if "inputs" not in method_abi:
+        raise ValueError(f"No inputs field in method contract_abi, {method_abi}")
+    if method_abi["inputs"] is None:
+        raise ValueError("inputs is None")
+    
+    inputs = ",".join([item["type"] for item in method_abi["inputs"]])
+    name = method.fn_name
+    return Web3.keccak(text=f"{name}({inputs})")[:4]
 
 
 class InputTransaction:
@@ -58,7 +44,7 @@ class InputTransaction:
         self.data = data
 
 
-class ParsedTransaction:
+class ParsedTransaction(InputTransaction):
     """
     Everything that should be in a parsed transaction
     """
@@ -67,12 +53,11 @@ class ParsedTransaction:
         self,
         to: HexBytes,
         data: HexBytes,
-        contractType: Contract,
-        method: ContractMethod,
-        args: list[Any], # anything defined in contract_types
+        contractType: Type[Contract],
+        method: ContractFunction,
+        args: dict[str, Any]
     ):
-        self.to = to
-        self.data = data
+        super().__init__(to, data)
         self.contractType = contractType
-        self.method= method
+        self.method = method
         self.args = args
