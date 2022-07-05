@@ -1,5 +1,4 @@
 import json
-from multiprocessing.sharedctypes import Value
 from web3.contract import Contract, ContractFunction
 from web3.auto import w3
 from web3 import Web3
