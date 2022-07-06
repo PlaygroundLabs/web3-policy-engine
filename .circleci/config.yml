@@ -1,0 +1,33 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@1.5.0
+  
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.10.5
+    resource_class: small
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: poetry
+      - run:
+          name: Run tests
+          command: |
+            mkdir -p /tmp/reports
+            poetry run pytest -v tests --junitxml=/tmp/reports/report.xml
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - .
+      - store_test_results:
+          path: /tmp/reports
+      - store_artifacts:
+          path: /tmp/reports
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test
