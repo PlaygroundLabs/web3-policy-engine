@@ -1,0 +1,7 @@
+"0x1111111111111111111111111111111111111111":
+    safeTransferFrom(address):
+      - manager
+      - admin
+"0x2222222222222222222222222222222222222222":
+    multiply(uint256):
+      - admin
