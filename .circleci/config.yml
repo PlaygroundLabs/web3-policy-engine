@@ -15,7 +15,6 @@ jobs:
       - run:
           name: Run tests
           command: |
-            poetry run alembic upgrade head
             mkdir -p /tmp/reports
             poetry run pytest -v tests --junitxml=/tmp/reports/report.xml
       - persist_to_workspace:
