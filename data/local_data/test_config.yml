@@ -1,7 +1,18 @@
-"0x1111111111111111111111111111111111111111":
-    safeTransferFrom(address):
-      - manager
-      - admin
-"0x2222222222222222222222222222222222222222":
-    multiply(uint256):
-      - admin
+testContract:
+    testmethod1:
+      - manager:
+          _arg1:
+            - 100
+            - 200
+    testmethod2:
+      - manager:
+          _arg1:
+            - 100
+            - 200
+          _arg2:
+            - "0x3434343434343434343434343434343434343434" 
+      - manager:
+          _arg1:
+            - 100
+          _arg2:
+            - "0x5656565656565656565656565656565656565656" 

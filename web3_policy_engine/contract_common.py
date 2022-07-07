@@ -5,12 +5,14 @@ from web3 import Web3
 from hexbytes import HexBytes
 from typing import Any, Type
 
+
 def contract_from_json(filename: str) -> Type[Contract]:
     with open(filename, "r") as file_handle:
         data = json.load(file_handle)
         return w3.eth.contract(abi=data["abi"])
 
-def method_signature(method : ContractFunction) -> HexBytes:
+
+def method_signature(method: ContractFunction) -> HexBytes:
     if method.contract_abi is None:
         raise ValueError("contract_abi is None")
 
@@ -27,10 +29,26 @@ def method_signature(method : ContractFunction) -> HexBytes:
         raise ValueError(f"No inputs field in method contract_abi, {method_abi}")
     if method_abi["inputs"] is None:
         raise ValueError("inputs is None")
-    
+
     inputs = ",".join([item["type"] for item in method_abi["inputs"]])
     name = method.fn_name
     return Web3.keccak(text=f"{name}({inputs})")[:4]
+
+
+def contract_addresses_from_json(
+    filename: str,
+) -> tuple[dict[str, Type[Contract]], dict[HexBytes, Type[Contract]]]:
+    with open(filename) as file_handle:
+        data = json.load(file_handle)
+        contracts = {
+            contract_name: contract_from_json(filename)
+            for contract_name, filename in data["contract_names"].items()
+        }
+        addresses = {
+            HexBytes(address): contracts[contract_name]
+            for address, contract_name in data["addresses"].items()
+        }
+        return contracts, addresses
 
 
 class InputTransaction:
@@ -54,9 +72,33 @@ class ParsedTransaction(InputTransaction):
         data: HexBytes,
         contractType: Type[Contract],
         method: ContractFunction,
-        args: dict[str, Any]
+        args: dict[str, Any],
     ):
         super().__init__(to, data)
         self.contractType = contractType
         self.method = method
         self.args = args
+
+
+class Request:
+    """
+    Complete request, with both transaction info and user role info
+    TODO: decide if state should be passed in this
+    """
+
+    def __init__(self, transaction: ParsedTransaction, roles: list[str]) -> None:
+        self.transaction = transaction
+        self.roles = roles
+
+
+class PermissionError(Exception):
+    """Exception raised when the user doesn't have the required permissions"""
+
+    def __init__(self, request: Request, message: str = "Missing permissions"):
+        self.request = request
+        self.message = message
+        super().__init__(message)
+    
+    def __str__(self):
+        roles = ', '.join(self.request.roles)
+        return f'{self.message} for user with roles: {roles}'

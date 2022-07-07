@@ -1,14 +1,26 @@
 from unittest import TestCase
 from hexbytes import HexBytes
 from web3.auto import w3
-from eth_abi.exceptions import InsufficientDataBytes 
+from eth_abi.exceptions import InsufficientDataBytes
 
 from web3_policy_engine.contract_common import (
     InputTransaction,
+    ParsedTransaction,
+    contract_addresses_from_json,
     contract_from_json,
     method_signature,
+    Request,
 )
 from web3_policy_engine.parse_transaction import Parser
+from web3_policy_engine.policy_engine import PolicyEngine
+from web3_policy_engine.verify_permissions import (
+    AllowedArg,
+    AllowedMethod,
+    AllowedRole,
+    AllowedContract,
+    permissions_from_dict,
+    permissions_from_yaml,
+)
 
 
 class TestContract(TestCase):
@@ -198,3 +210,397 @@ class TestParser(TestCase):
             HexBytes("0xc6888fa1"),
         )
         self.assertRaises(InsufficientDataBytes, parser.parse, transaction)
+
+
+class TestVerify(TestCase):
+    def test_arg(self):
+        allowed_arg = AllowedArg("_arg1", [1, 2])
+        contract = w3.eth.contract(
+            abi=[
+                {
+                    "constant": False,
+                    "inputs": [
+                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
+                    ],
+                    "name": "multiply",
+                    "outputs": [
+                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                    ],
+                    "payable": False,
+                    "stateMutability": "nonpayable",
+                    "type": "function",
+                }
+            ]
+        )
+
+        # working transaction
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.multiply,
+            {
+                "_arg1": 1,
+            },
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertTrue(allowed_arg.verify(request))
+
+        # invalid value
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.multiply,
+            {
+                "_arg1": 10,
+            },
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertFalse(allowed_arg.verify(request))
+
+        # missing value
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.multiply,
+            {
+                "_arg2": 1,
+            },
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertFalse(allowed_arg.verify(request))
+
+    def test_role(self):
+        allowed_arg1 = AllowedArg("_arg1", [1, 2])
+        allowed_arg2 = AllowedArg("_arg2", [10])
+        allowed_role = AllowedRole("testRole", [allowed_arg1])
+        contract = w3.eth.contract(
+            abi=[
+                {
+                    "constant": False,
+                    "inputs": [
+                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
+                    ],
+                    "name": "multiply",
+                    "outputs": [
+                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                    ],
+                    "payable": False,
+                    "stateMutability": "nonpayable",
+                    "type": "function",
+                }
+            ]
+        )
+
+        # working transaction
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.multiply,
+            {
+                "_arg1": 1,
+            },
+        )
+
+        # valid role
+        request = Request(transaction, ["testRole"])
+        self.assertTrue(allowed_role.verify(request))
+
+        # invalid role
+        request = Request(transaction, ["testRole2"])
+        self.assertFalse(allowed_role.verify(request))
+
+        # one valid and one invalid role
+        request = Request(transaction, ["testRole2", "testRole"])
+        self.assertTrue(allowed_role.verify(request))
+
+        allowed_role = AllowedRole("testRole", [allowed_arg1, allowed_arg2])
+        contract = w3.eth.contract(
+            abi=[
+                {
+                    "constant": False,
+                    "inputs": [
+                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"},
+                        {"internalType": "uint256", "name": "_arg2", "type": "uint256"},
+                    ],
+                    "name": "multiply",
+                    "outputs": [
+                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                    ],
+                    "payable": False,
+                    "stateMutability": "nonpayable",
+                    "type": "function",
+                }
+            ]
+        )
+
+        # working transaction
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.multiply,
+            {"_arg1": 1, "_arg2": 10},
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertTrue(allowed_role.verify(request))
+
+        # working transaction
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.multiply,
+            {"_arg1": 2, "_arg2": 10},
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertTrue(allowed_role.verify(request))
+
+        # failing transaction (one arg right, other wrong)
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.multiply,
+            {"_arg1": 1, "_arg2": -1},
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertFalse(allowed_role.verify(request))
+
+    def test_method(self):
+        allowed_arg = AllowedArg("_arg1", [1, 2])
+        allowed_role = AllowedRole("testRole", [allowed_arg])
+        allowed_method = AllowedMethod("testMethod1", [allowed_role])
+
+        contract = w3.eth.contract(
+            abi=[
+                {
+                    "constant": False,
+                    "inputs": [
+                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
+                    ],
+                    "name": "testMethod1",
+                    "outputs": [
+                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                    ],
+                    "payable": False,
+                    "stateMutability": "nonpayable",
+                    "type": "function",
+                },
+                {
+                    "constant": False,
+                    "inputs": [
+                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
+                    ],
+                    "name": "testMethod2",
+                    "outputs": [
+                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                    ],
+                    "payable": False,
+                    "stateMutability": "nonpayable",
+                    "type": "function",
+                },
+            ]
+        )
+
+        # working transaction
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.testMethod1,
+            {
+                "_arg1": 1,
+            },
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertTrue(allowed_method.verify(request))
+
+        # failing transaction, method not allowed
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.testMethod2,
+            {
+                "_arg1": 1,
+            },
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertFalse(allowed_method.verify(request))
+
+    def test_contract(self):
+        contract = w3.eth.contract(
+            abi=[
+                {
+                    "constant": False,
+                    "inputs": [
+                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
+                    ],
+                    "name": "testMethod1",
+                    "outputs": [
+                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                    ],
+                    "payable": False,
+                    "stateMutability": "nonpayable",
+                    "type": "function",
+                }
+            ]
+        )
+        contract2 = w3.eth.contract(
+            abi=[
+                {
+                    "constant": False,
+                    "inputs": [],
+                    "name": "testMethod1",
+                    "outputs": [],
+                    "payable": False,
+                    "stateMutability": "nonpayable",
+                    "type": "function",
+                }
+            ]
+        )
+
+        allowed_arg = AllowedArg("_arg1", [1, 2])
+        allowed_role = AllowedRole("testRole", [allowed_arg])
+        allowed_method = AllowedMethod("testMethod1", [allowed_role])
+        allowed_contract = AllowedContract(contract, [allowed_method])
+
+        # working transaction
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.testMethod1,
+            {
+                "_arg1": 1,
+            },
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertTrue(allowed_contract.verify(request))
+
+        # failing transaction, wrong contract type
+        transaction = ParsedTransaction(
+            HexBytes("0x5678567856785678567856785678567856785678"),
+            HexBytes("0x0"),
+            contract2,
+            contract2.functions.testMethod1,
+            {
+                "_arg1": 1,
+            },
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertFalse(allowed_contract.verify(request))
+
+    def test_permission_from_dict(self):
+        contracts = {"testContract": w3.eth.contract(abi=[])}
+        data = {
+            "testContract": {
+                "safeTransferFrom": [
+                    {
+                        "manager": {
+                            "_to": [
+                                "0x1212121212121212121212121212121212121212",
+                                "0x3434343434343434343434343434343434343434",
+                            ],
+                            "_value": [100],
+                        }
+                    },
+                    {
+                        "manager": {
+                            "_to": ["0x3434343434343434343434343434343434343434"],
+                            "_value": [200],
+                        }
+                    },
+                ]
+            }
+        }
+        permissions = permissions_from_dict(data, contracts)
+        self.assertEqual(len(permissions.allowed_contracts), 1)
+
+        allowed_contract = permissions.allowed_contracts[0]
+        self.assertEqual(allowed_contract.contract_type, contracts["testContract"])
+        self.assertEqual(len(allowed_contract.allowed_methods), 1)
+
+        allowed_method = allowed_contract.allowed_methods[0]
+        self.assertEqual(allowed_method.name, "safeTransferFrom")
+        self.assertEqual(len(allowed_method.allowed_roles), 2)
+
+        allowed_role1 = allowed_method.allowed_roles[0]
+        allowed_role2 = allowed_method.allowed_roles[1]
+        self.assertEqual(allowed_role1.name, "manager")
+        self.assertEqual(allowed_role2.name, "manager")
+
+        role1_to = allowed_role1.allowed_args[0]
+        self.assertEqual(role1_to.name, "_to")
+        self.assertEqual(
+            role1_to.options,
+            data["testContract"]["safeTransferFrom"][0]["manager"]["_to"],
+        )
+        role1_value = allowed_role1.allowed_args[1]
+        self.assertEqual(role1_value.name, "_value")
+        self.assertEqual(
+            role1_value.options,
+            data["testContract"]["safeTransferFrom"][0]["manager"]["_value"],
+        )
+
+        role2_to = allowed_role2.allowed_args[0]
+        self.assertEqual(role2_to.name, "_to")
+        self.assertEqual(
+            role2_to.options,
+            data["testContract"]["safeTransferFrom"][1]["manager"]["_to"],
+        )
+        role2_value = allowed_role2.allowed_args[1]
+        self.assertEqual(role2_value.name, "_value")
+        self.assertEqual(
+            role2_value.options,
+            data["testContract"]["safeTransferFrom"][1]["manager"]["_value"],
+        )
+
+
+class TestPolicyEngine(TestCase):
+    def test_from_file(self):
+        # set up policy engine
+        policy_engine = PolicyEngine(
+            "data/local_data/test_contract_addresses.json",
+            "data/local_data/test_config.yml",
+        )
+
+        # good transaction
+        payload = HexBytes(
+            "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064"
+        )
+        input_transaction1 = InputTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+        )
+        self.assertTrue(policy_engine.verify(input_transaction1, ["manager"]))
+
+        # bad transaction, _arg1=1 not allowed for manager
+        payload = HexBytes(
+            "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000001"
+        )
+        input_transaction1 = InputTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+        )
+        self.assertFalse(policy_engine.verify(input_transaction1, ["manager"]))
+
+        # bad transaction, user not allowed to use testmethod1
+        payload = HexBytes(
+            "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064"
+        )
+        input_transaction1 = InputTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+        )
+        self.assertFalse(policy_engine.verify(input_transaction1, ["user"]))
+
+        # good transaction, user not allowed to use testmethod1, but manager is
+        payload = HexBytes(
+            "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064"
+        )
+        input_transaction1 = InputTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+        )
+        self.assertTrue(policy_engine.verify(input_transaction1, ["user", "manager"]))
