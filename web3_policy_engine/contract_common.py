@@ -5,7 +5,6 @@ from web3 import Web3
 from hexbytes import HexBytes
 from typing import Any, Type
 
-
 def contract_from_json(filename: str) -> Type[Contract]:
     with open(filename, "r") as file_handle:
         data = json.load(file_handle)
@@ -29,7 +28,6 @@ def method_signature(method: ContractFunction) -> HexBytes:
         raise ValueError(f"No inputs field in method contract_abi, {method_abi}")
     if method_abi["inputs"] is None:
         raise ValueError("inputs is None")
-
     inputs = ",".join([item["type"] for item in method_abi["inputs"]])
     name = method.fn_name
     return Web3.keccak(text=f"{name}({inputs})")[:4]
