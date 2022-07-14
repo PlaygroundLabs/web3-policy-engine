@@ -2,7 +2,7 @@ from typing import Any, Type
 import yaml
 from web3.contract import Contract
 
-from web3_policy_engine.contract_common import Request
+from web3_policy_engine.contract_common import Request, InvalidPermissionsError, UnrecognizedRequestError
 
 
 class AllowedArg:
@@ -33,11 +33,19 @@ class AllowedMethod:
     def __init__(self, name: str, allowed_roles: list[AllowedRole]) -> None:
         self.name = name
         self.allowed_roles = allowed_roles
+    
+    def check_name(self, request: Request) -> bool:
+        return request.transaction.method.fn_name == self.name
 
     def verify(self, request: Request) -> bool:
-        if request.transaction.method.fn_name != self.name:
-            return False
-        return any([role.verify(request) for role in self.allowed_roles])
+        if not self.check_name(request):
+            # Should be unreachable in normal flow
+            raise UnrecognizedRequestError("Method name not recognized")
+
+        if any([role.verify(request) for role in self.allowed_roles]):
+            return True
+        
+        raise InvalidPermissionsError("User has no valid roles")
 
 
 class AllowedContract:
@@ -46,11 +54,18 @@ class AllowedContract:
     ) -> None:
         self.contract_type = contract_type
         self.allowed_methods = allowed_methods
+    
+    def get_method(self, request : Request) -> AllowedMethod:
+        for method in self.allowed_methods:
+            if method.check_name(request):
+                return method
+        raise UnrecognizedRequestError("Method not found")
 
     def verify(self, request: Request) -> bool:
         if request.transaction.contractType != self.contract_type:
-            return False
-        return any([method.verify(request) for method in self.allowed_methods])
+            raise UnrecognizedRequestError("Contract type not recognized")
+        method = self.get_method(request)
+        return method.verify(request)
 
 
 class Verifier:

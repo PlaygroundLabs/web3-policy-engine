@@ -89,14 +89,8 @@ class Request:
         self.roles = roles
 
 
-class PermissionError(Exception):
+class InvalidPermissionsError(Exception):
     """Exception raised when the user doesn't have the required permissions"""
 
-    def __init__(self, request: Request, message: str = "Missing permissions"):
-        self.request = request
-        self.message = message
-        super().__init__(message)
-    
-    def __str__(self):
-        roles = ', '.join(self.request.roles)
-        return f'{self.message} for user with roles: {roles}'
+class UnrecognizedRequestError(Exception):
+    """Exception raised when request has an unrecognized method, contract type, etc."""

@@ -6,10 +6,11 @@ from eth_abi.exceptions import InsufficientDataBytes
 from web3_policy_engine.contract_common import (
     InputTransaction,
     ParsedTransaction,
-    contract_addresses_from_json,
     contract_from_json,
     method_signature,
     Request,
+    InvalidPermissionsError,
+    UnrecognizedRequestError
 )
 from web3_policy_engine.parse_transaction import Parser
 from web3_policy_engine.policy_engine import PolicyEngine
@@ -19,7 +20,6 @@ from web3_policy_engine.verify_permissions import (
     AllowedRole,
     AllowedContract,
     permissions_from_dict,
-    permissions_from_yaml,
 )
 
 
@@ -430,7 +430,85 @@ class TestVerify(TestCase):
             },
         )
         request = Request(transaction, ["testRole"])
-        self.assertFalse(allowed_method.verify(request))
+        self.assertRaises(UnrecognizedRequestError, allowed_method.verify, request)
+
+        # failing transaction, no valid role
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.testMethod1,
+            {
+                "_arg1": 10,
+            },
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertRaises(InvalidPermissionsError, allowed_method.verify, request)
+
+    def test_multiple_roles(self):
+        allowed_arg1 = AllowedArg("_arg1", [1, 2])
+        allowed_role1 = AllowedRole("testRole1", [allowed_arg1])
+        allowed_arg2 = AllowedArg("_arg1", [10])
+        allowed_role2 = AllowedRole("testRole2", [allowed_arg2])
+        allowed_method = AllowedMethod("testMethod", [allowed_role1, allowed_role2])
+
+        contract = w3.eth.contract(
+            abi=[
+                {
+                    "constant": False,
+                    "inputs": [
+                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
+                    ],
+                    "name": "testMethod",
+                    "outputs": [
+                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                    ],
+                    "payable": False,
+                    "stateMutability": "nonpayable",
+                    "type": "function",
+                },
+            ]
+        )
+
+        # working transaction, one good role
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.testMethod,
+            {
+                "_arg1": 1,
+            },
+        )
+        request = Request(transaction, ["testRole1"])
+        self.assertTrue(allowed_method.verify(request))
+
+        # working transaction, one bad role and one good one
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.testMethod,
+            {
+                "_arg1": 10,
+            },
+        )
+        request = Request(transaction, ["testRole1", "testRole2"])
+        self.assertTrue(allowed_method.verify(request))
+
+        # failing transaction, two bad roles
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.testMethod,
+            {
+                "_arg1": -1,
+            },
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertRaises(InvalidPermissionsError, allowed_method.verify, request)
+
 
     def test_contract(self):
         contract = w3.eth.contract(
@@ -441,6 +519,19 @@ class TestVerify(TestCase):
                         {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
                     ],
                     "name": "testMethod1",
+                    "outputs": [
+                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                    ],
+                    "payable": False,
+                    "stateMutability": "nonpayable",
+                    "type": "function",
+                },
+                {
+                    "constant": False,
+                    "inputs": [
+                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
+                    ],
+                    "name": "testMethod2",
                     "outputs": [
                         {"internalType": "uint256", "name": "_out", "type": "uint256"}
                     ],
@@ -493,7 +584,20 @@ class TestVerify(TestCase):
             },
         )
         request = Request(transaction, ["testRole"])
-        self.assertFalse(allowed_contract.verify(request))
+        self.assertRaises(UnrecognizedRequestError, allowed_contract.verify, request)
+
+        # failing transaction, no valid methods
+        transaction = ParsedTransaction(
+            HexBytes("0x5678567856785678567856785678567856785678"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.testMethod2,
+            {
+                "_arg1": 1,
+            },
+        )
+        request = Request(transaction, ["testRole"])
+        self.assertRaises(UnrecognizedRequestError, allowed_contract.verify, request)
 
     def test_permission_from_dict(self):
         contracts = {"testContract": w3.eth.contract(abi=[])}
@@ -585,7 +689,7 @@ class TestPolicyEngine(TestCase):
         input_transaction1 = InputTransaction(
             HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
         )
-        self.assertFalse(policy_engine.verify(input_transaction1, ["manager"]))
+        self.assertRaises(InvalidPermissionsError, policy_engine.verify, input_transaction1, ["manager"])
 
         # bad transaction, user not allowed to use testmethod1
         payload = HexBytes(
@@ -594,7 +698,7 @@ class TestPolicyEngine(TestCase):
         input_transaction1 = InputTransaction(
             HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
         )
-        self.assertFalse(policy_engine.verify(input_transaction1, ["user"]))
+        self.assertRaises(InvalidPermissionsError, policy_engine.verify, input_transaction1, ["user"])
 
         # good transaction, user not allowed to use testmethod1, but manager is
         payload = HexBytes(
