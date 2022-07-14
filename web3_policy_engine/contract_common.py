@@ -1,4 +1,5 @@
 import json
+import yaml
 from web3.contract import Contract, ContractFunction
 from web3.auto import w3
 from web3 import Web3
@@ -49,6 +50,7 @@ def contract_addresses_from_json(
         return contracts, addresses
 
 
+
 class InputTransaction:
     """
     Defines all of the required information for transaction inputs to policy engine
@@ -87,6 +89,23 @@ class Request:
     def __init__(self, transaction: ParsedTransaction, roles: list[str]) -> None:
         self.transaction = transaction
         self.roles = roles
+
+class ArgumentGroup:
+    """
+    Argument group, typically used for lists of users in a particular category.
+    TODO: consider integrating this with SQLAlchemy for easier database access
+    """
+
+    def __init__(self, members: list[Any]):
+        self.members = members
+    
+    def contains(self, member: Any) -> bool:
+        return member in self.members
+
+def argument_groups_from_yaml(filename: str) -> dict[str, ArgumentGroup]:
+    with open(filename) as file_handle:
+        data = yaml.safe_load(file_handle)
+        return {group_name:ArgumentGroup(members) for group_name, members in data.items()}
 
 
 class InvalidPermissionsError(Exception):

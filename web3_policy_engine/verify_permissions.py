@@ -2,20 +2,32 @@ from typing import Any, Type
 import yaml
 from web3.contract import Contract
 
-from web3_policy_engine.contract_common import Request, InvalidPermissionsError, UnrecognizedRequestError
+from web3_policy_engine.contract_common import (
+    Request,
+    InvalidPermissionsError,
+    UnrecognizedRequestError,
+    ArgumentGroup,
+)
 
 
 class AllowedArg:
-    def __init__(self, name: str, options: list[Any]) -> None:
+    def __init__(
+        self, name: str, options: list[Any], group_options: list[ArgumentGroup]
+    ) -> None:
         self.name = name
         self.options = options
+        self.group_options = group_options
 
     def verify(self, request: Request) -> bool:
         if self.name not in request.transaction.args.keys():
             return False
-        if request.transaction.args[self.name] not in self.options:
-            return False
-        return True
+        arg = request.transaction.args[self.name]
+        if request.transaction.args[self.name] in self.options:
+            return True
+        for group in self.group_options:
+            if group.contains(arg):
+                return True
+        return False
 
 
 class AllowedRole:
@@ -33,7 +45,7 @@ class AllowedMethod:
     def __init__(self, name: str, allowed_roles: list[AllowedRole]) -> None:
         self.name = name
         self.allowed_roles = allowed_roles
-    
+
     def check_name(self, request: Request) -> bool:
         return request.transaction.method.fn_name == self.name
 
@@ -44,7 +56,7 @@ class AllowedMethod:
 
         if any([role.verify(request) for role in self.allowed_roles]):
             return True
-        
+
         raise InvalidPermissionsError("User has no valid roles")
 
 
@@ -54,8 +66,8 @@ class AllowedContract:
     ) -> None:
         self.contract_type = contract_type
         self.allowed_methods = allowed_methods
-    
-    def get_method(self, request : Request) -> AllowedMethod:
+
+    def get_method(self, request: Request) -> AllowedMethod:
         for method in self.allowed_methods:
             if method.check_name(request):
                 return method
@@ -76,18 +88,24 @@ class Verifier:
         return any([address.verify(request) for address in self.allowed_contracts])
 
 
+def isolate_options_and_group_options(
+    options: list[Any], groups: dict[str, ArgumentGroup]
+) -> tuple[list[Any], list[ArgumentGroup]]:
+    return (
+        [option for option in options if option not in groups.keys()],
+        [group for group_name, group in groups.items() if group_name in options]
+    )
+
+
 def permissions_from_dict(
     data: dict[str, dict[str, list[dict[str, dict[str, list[Any]]]]]],
     contracts: dict[str, Type[Contract]],
+    groups: dict[str, ArgumentGroup] = {},
 ) -> Verifier:
 
-    missing_contract_names = [
-        contract_name
-        for contract_name in data.keys()
-        if contract_name not in data.keys()
-    ]
-    if len(missing_contract_names) > 0:
-        raise ValueError(f"Unknown contract(s) {''.join(missing_contract_names)}")
+    for contract_name in data.keys():
+        if contract_name not in contracts.keys():
+            raise ValueError(f"Unknown contract: {contract_name}")
 
     verifier = Verifier(
         [
@@ -100,7 +118,12 @@ def permissions_from_dict(
                             AllowedRole(
                                 role_name,
                                 [
-                                    AllowedArg(arg_name, options)
+                                    AllowedArg(
+                                        arg_name,
+                                        *isolate_options_and_group_options(
+                                            options, groups
+                                        ),
+                                    )
                                     for arg_name, options in args.items()
                                 ],
                             )
@@ -119,8 +142,10 @@ def permissions_from_dict(
 
 
 def permissions_from_yaml(
-    filename: str, contracts: dict[str, Type[Contract]]
+    filename: str,
+    contracts: dict[str, Type[Contract]],
+    groups: dict[str, ArgumentGroup] = {},
 ) -> Verifier:
     with open(filename, "r") as file_handle:
         data = yaml.safe_load(file_handle)
-        return permissions_from_dict(data, contracts)
+        return permissions_from_dict(data, contracts, groups)
