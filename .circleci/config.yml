@@ -17,6 +17,21 @@ jobs:
           command: |
             mkdir -p /tmp/reports
             poetry run pytest -v tests --junitxml=/tmp/reports/report.xml
+      - run:
+          name: Run code coverage
+          command: |
+            poetry run coverage run --source=we3_policy_engine -m  pytest tests
+            poetry run coverage report --fail-under=85
+            poetry run coverage html  # generates htmlcov with test coverage info
+      - run:
+          name: Run Mypy to check types
+          command: |
+            poetry run mypy we3_policy_engine tests
+      - run:
+          name: Run pylint
+          command: |
+            # This uses the configuration in pyproject.toml
+            poetry run pylint we3_policy_engine --errors-only
       - persist_to_workspace:
           root: ~/project
           paths:
