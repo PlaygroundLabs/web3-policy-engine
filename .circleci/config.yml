@@ -26,6 +26,7 @@ jobs:
       - run:
           name: Run Mypy to check types
           command: |
+            poetry run mypy --install-types
             poetry run mypy web3_policy_engine tests
       - run:
           name: Run pylint
