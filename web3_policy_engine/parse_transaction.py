@@ -1,5 +1,4 @@
 from typing import Type
-from hexbytes import HexBytes
 from web3.contract import Contract
 
 from .contract_common import InputTransaction, ParsedTransaction
@@ -10,7 +9,7 @@ from .contract_common import InputTransaction, ParsedTransaction
 
 
 class Parser:
-    def __init__(self, contracts: dict[HexBytes, Type[Contract]]):
+    def __init__(self, contracts: dict[bytes, Type[Contract]]):
         self.contracts = contracts
 
     def parse(self, transaction: InputTransaction) -> ParsedTransaction:

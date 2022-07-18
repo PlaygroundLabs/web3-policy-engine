@@ -36,7 +36,7 @@ def method_signature(method: ContractFunction) -> HexBytes:
 
 def contract_addresses_from_json(
     filename: str,
-) -> tuple[dict[str, Type[Contract]], dict[HexBytes, Type[Contract]]]:
+) -> tuple[dict[str, Type[Contract]], dict[bytes, Type[Contract]]]:
     with open(filename) as file_handle:
         data = json.load(file_handle)
         contracts = {
@@ -44,7 +44,7 @@ def contract_addresses_from_json(
             for contract_name, filename in data["contract_names"].items()
         }
         addresses = {
-            HexBytes(address): contracts[contract_name]
+            bytes(HexBytes(address)): contracts[contract_name]
             for address, contract_name in data["addresses"].items()
         }
         return contracts, addresses
@@ -56,7 +56,7 @@ class InputTransaction:
     Defines all of the required information for transaction inputs to policy engine
     """
 
-    def __init__(self, to: HexBytes, data: HexBytes):
+    def __init__(self, to: bytes, data: bytes):
         self.to = to
         self.data = data
 
@@ -68,8 +68,8 @@ class ParsedTransaction(InputTransaction):
 
     def __init__(
         self,
-        to: HexBytes,
-        data: HexBytes,
+        to: bytes,
+        data: bytes,
         contractType: Type[Contract],
         method: ContractFunction,
         args: dict[str, Any],
