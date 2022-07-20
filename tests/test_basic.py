@@ -58,7 +58,9 @@ class TestParser(TestCase):
 
     def test_multiple_args(self):
         """Test parsing a transaction for contract methods with several arguments"""
-        contract = make_contract_multple_args(["uint256", "address", "address", "uint256"])
+        contract = make_contract_multple_args(
+            ["uint256", "address", "address", "uint256"]
+        )
         parser = Parser(
             {HexBytes("0x1234123412341234123412341234123412341234"): contract}
         )
@@ -123,6 +125,7 @@ class TestParser(TestCase):
         self.assertRaises(ValueError, parser.parse, transaction)
 
     def test_invalid_method_name(self):
+        """Test that the parser fails when given a method name which doesn't exist"""
         contract = make_basic_contract()
         parser = Parser(
             {HexBytes("0x1234123412341234123412341234123412341234"): contract}
@@ -137,6 +140,7 @@ class TestParser(TestCase):
         self.assertRaises(ValueError, parser.parse, transaction)
 
     def test_no_method_args(self):
+        """Test that the parser fails when no arguments are specified"""
         contract = make_basic_contract()
         parser = Parser(
             {HexBytes("0x1234123412341234123412341234123412341234"): contract}
@@ -144,14 +148,14 @@ class TestParser(TestCase):
 
         payload = method_signature(contract.functions.testMethod1)
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"),
-            payload
+            HexBytes("0x1234123412341234123412341234123412341234"), payload
         )
         self.assertRaises(InsufficientDataBytes, parser.parse, transaction)
 
 
 class TestVerify(TestCase):
     def test_arg(self):
+        """Test basic functionality of AllowedArg"""
         allowed_arg = AllowedArg([1, 2], [])
 
         # valid value
@@ -160,6 +164,7 @@ class TestVerify(TestCase):
         self.assertFalse(allowed_arg.verify(10))
 
     def test_arg_group(self):
+        """Test grouping functionality of AllowedArg (normally used for groups of users)"""
         allowed_arg = AllowedArg([10], [ArgumentGroup([1, 2])])
 
         # valid, 1 is in a valid group
@@ -172,6 +177,7 @@ class TestVerify(TestCase):
         self.assertFalse(allowed_arg.verify(-1))
 
     def test_role_one_arg(self):
+        """Test basic functionality of ALlowedRole"""
         allowed_arg = AllowedArg([1, 2], [])
         allowed_role = AllowedRole({"_arg1": allowed_arg})
 
@@ -182,6 +188,7 @@ class TestVerify(TestCase):
         self.assertFalse(allowed_role.verify_arg("_arg1", 10))
 
     def test_role_multiple_args(self):
+        """Test that AllowedRole works as intended with multiple roles in the picture"""
         allowed_arg1 = AllowedArg([1, 2], [])
         allowed_arg2 = AllowedArg([10], [])
         allowed_role = AllowedRole({"_arg1": allowed_arg1, "_arg2": allowed_arg2})
@@ -200,8 +207,8 @@ class TestVerify(TestCase):
 
     def test_role_missing_arg(self):
         """
-        Test what happens if user provides a valid arg which isn't present in config
-        current behavior is that the arg will be treated as optional
+        Test what happens if user provides a valid arg which isn't present in config.
+        Current behavior is that the arg will be treated as optional
         """
         allowed_arg = AllowedArg([1, 2], [])
         allowed_role = AllowedRole({"_arg1": allowed_arg})
@@ -210,6 +217,7 @@ class TestVerify(TestCase):
         self.assertTrue(allowed_role.verify_arg("_arg2", 1))
 
     def test_method(self):
+        """Test basic functionality of AllowedMethod"""
         allowed_arg = AllowedArg([1, 2], [])
         allowed_role = AllowedRole({"_arg1": allowed_arg})
         allowed_method = AllowedMethod({"testRole": allowed_role})
@@ -243,12 +251,10 @@ class TestVerify(TestCase):
         self.assertRaises(InvalidPermissionsError, allowed_method.verify, request)
 
     def test_method_multiple_args(self):
+        """Test AllowedMethod with a contract method that takes multiple arguments"""
         allowed_arg = AllowedArg([1, 2], [])
-        allowed_role1 = AllowedRole({"_arg1": allowed_arg, "_arg2": allowed_arg})
-        allowed_role2 = AllowedRole({"_arg1": allowed_arg})
-        allowed_method = AllowedMethod(
-            {"testRole1": allowed_role1, "testRole2": allowed_role2}
-        )
+        allowed_role = AllowedRole({"_arg1": allowed_arg, "_arg2": allowed_arg})
+        allowed_method = AllowedMethod({"testRole1": allowed_role})
 
         contract = make_contract_multple_args(["uint256", "uint256"])
 
@@ -263,7 +269,7 @@ class TestVerify(TestCase):
         request = TransactionRequest(transaction, ["testRole1"])
         self.assertTrue(allowed_method.verify(request))
 
-        # invalid transaction, _arg2=10 not allowed for
+        # invalid transaction, _arg2=10 not allowed for testRole1
         transaction = ParsedTransaction(
             HexBytes("0x1234123412341234123412341234123412341234"),
             HexBytes("0x0"),
@@ -275,10 +281,11 @@ class TestVerify(TestCase):
         self.assertRaises(InvalidPermissionsError, allowed_method.verify, request)
 
     def test_method_multiple_roles(self):
+        """Test various combinations of roles with slightly different permissions on the same method"""
         allowed_arg1 = AllowedArg([1, 2], [])
         allowed_arg2 = AllowedArg([10], [])
-        allowed_role1 = AllowedRole({"_arg1": allowed_arg1, "_arg2": allowed_arg1})
-        allowed_role2 = AllowedRole({"_arg1": allowed_arg2, "_arg2": allowed_arg2})
+        allowed_role1 = AllowedRole({"_arg1": allowed_arg1, "_arg1": allowed_arg1})
+        allowed_role2 = AllowedRole({"_arg2": allowed_arg2, "_arg2": allowed_arg2})
         allowed_method = AllowedMethod(
             {"testRole1": allowed_role1, "testRole2": allowed_role2}
         )
@@ -324,12 +331,25 @@ class TestVerify(TestCase):
                 "_arg2": 10,
             },
         )
-        request = TransactionRequest(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole1"])
         self.assertRaises(InvalidPermissionsError, allowed_method.verify, request)
 
         # valid transaction, _arg1=1 allowed by testRole1, and _arg1=10 allowed by testRole2
+        transaction = ParsedTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"),
+            HexBytes("0x0"),
+            contract,
+            contract.functions.testMethod1,
+            {
+                "_arg1": 1,
+                "_arg2": 10,
+            },
+        )
+        request = TransactionRequest(transaction, ["testRole1", "testRole2"])
+        self.assertTrue(allowed_method.verify(request))
 
     def test_contract(self):
+        """Test basic functionality of AllowedContract"""
         contract = make_contract_multiple_methods([["uint256"], ["uint256"]])
 
         allowed_arg = AllowedArg([1, 2], [])
@@ -364,6 +384,7 @@ class TestVerify(TestCase):
         self.assertRaises(UnrecognizedRequestError, allowed_contract.verify, request)
 
     def test_verifier(self):
+        """Test basic functionality of Verifier"""
         contract = make_basic_contract()
         contract2 = make_basic_contract()
         allowed_arg = AllowedArg([1, 2], [])
@@ -399,6 +420,7 @@ class TestVerify(TestCase):
         self.assertRaises(UnrecognizedRequestError, verifier.verify, request)
 
     def test_permission_from_dict(self):
+        """Test that user can load a Verifier object from a dictionary, and that it works as expected."""
         contract = make_contract_multiple_methods([["uint256"], ["uint256"]])
         contracts = {"testContract": contract}
         data = {
@@ -464,6 +486,7 @@ class TestVerify(TestCase):
 
 class TestPolicyEngine(TestCase):
     def test_from_file_basic(self):
+        """Test that you can load a policy engine from file, and that it works as expected"""
         # set up policy engine
         policy_engine = PolicyEngine(
             "data/local_data/test_contract_addresses.json",
@@ -471,9 +494,7 @@ class TestPolicyEngine(TestCase):
             "data/local_data/test_groups.yml",
         )
 
-        # testmethod1 requires a uint256
-
-        # good transaction, _arg1=100 allowed for testRole1
+        # good transaction, testmethod1(_arg1=100) allowed for testRole1
         payload = HexBytes(
             "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064"
         )
@@ -482,7 +503,7 @@ class TestPolicyEngine(TestCase):
         )
         self.assertTrue(policy_engine.verify(input_transaction1, ["testRole1"]))
 
-        # bad transaction, _arg1=1 not allowed for testRole1
+        # bad transaction, testmethod1(_arg1=1) not allowed for testRole1
         payload = HexBytes(
             "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000001"
         )
@@ -496,7 +517,7 @@ class TestPolicyEngine(TestCase):
             ["testRole1"],
         )
 
-        # bad transaction, user not allowed to use testmethod1
+        # bad transaction, testRole2 not allowed to use testmethod1
         payload = HexBytes(
             "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064"
         )
@@ -510,7 +531,7 @@ class TestPolicyEngine(TestCase):
             ["testRole2"],
         )
 
-        # good transaction, user not allowed to use testmethod1, but testRole1 is
+        # good transaction, testRole2 not allowed to use testmethod1, but testRole1 is
         payload = HexBytes(
             "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064"
         )
@@ -599,6 +620,7 @@ class TestPolicyEngine(TestCase):
 
 
 def make_basic_contract() -> Type[Contract]:
+    """Construct a basic web3 contract with one method (taking a uint256 as input)"""
     return w3.eth.contract(
         abi=[
             {
@@ -619,6 +641,7 @@ def make_basic_contract() -> Type[Contract]:
 
 
 def make_contract_multple_args(types: Iterable[str]) -> Type[Contract]:
+    """Construct web3 contract with one method taking various input types"""
     return w3.eth.contract(
         abi=[
             {
@@ -638,13 +661,19 @@ def make_contract_multple_args(types: Iterable[str]) -> Type[Contract]:
         ]
     )
 
+
 def make_contract_multiple_methods(types: Iterable[Iterable[str]]) -> Type[Contract]:
+    """Construct web3 contract with several methods all taking various input types"""
     return w3.eth.contract(
         abi=[
             {
                 "constant": False,
                 "inputs": [
-                    {"internalType": "uint256", "name": f"_arg{arg_num+1}", "type": arg_type}
+                    {
+                        "internalType": "uint256",
+                        "name": f"_arg{arg_num+1}",
+                        "type": arg_type,
+                    }
                     for arg_num, arg_type in enumerate(method_types)
                 ],
                 "name": f"testMethod{method_num+1}",
@@ -654,6 +683,7 @@ def make_contract_multiple_methods(types: Iterable[Iterable[str]]) -> Type[Contr
                 "payable": False,
                 "stateMutability": "nonpayable",
                 "type": "function",
-            } for method_num, method_types in enumerate(types)
+            }
+            for method_num, method_types in enumerate(types)
         ]
     )
