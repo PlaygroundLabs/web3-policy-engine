@@ -80,10 +80,9 @@ class ParsedTransaction(InputTransaction):
         self.args = args
 
 
-class Request:
+class TransactionRequest:
     """
     Complete request, with both transaction info and user role info
-    TODO: decide if state should be passed in this
     """
 
     def __init__(self, transaction: ParsedTransaction, roles: list[str]) -> None:

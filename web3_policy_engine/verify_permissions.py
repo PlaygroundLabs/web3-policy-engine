@@ -3,7 +3,7 @@ import yaml
 from web3.contract import Contract
 
 from web3_policy_engine.contract_common import (
-    Request,
+    TransactionRequest,
     InvalidPermissionsError,
     UnrecognizedRequestError,
     ArgumentGroup,
@@ -45,7 +45,7 @@ class AllowedMethod:
         self.allowed_roles = allowed_roles
 
     def verify_arg_all_roles(
-        self, request: Request, arg_name: str, arg_value: Any
+        self, request: TransactionRequest, arg_name: str, arg_value: Any
     ) -> list[bool]:
         return [
             self.allowed_roles[role].verify_arg(arg_name, arg_value)
@@ -53,7 +53,7 @@ class AllowedMethod:
             if role in self.allowed_roles
         ]
 
-    def verify(self, request: Request) -> bool:
+    def verify(self, request: TransactionRequest) -> bool:
         # check if each arg is allowed by some role
         for arg_name, arg_value in request.transaction.args.items():
             if not any(self.verify_arg_all_roles(request, arg_name, arg_value)):
@@ -75,15 +75,15 @@ class AllowedContract:
         self.contract_type = contract_type
         self.allowed_methods = allowed_methods
 
-    def get_method(self, request: Request) -> AllowedMethod:
+    def get_method(self, request: TransactionRequest) -> AllowedMethod:
         if request.transaction.method.fn_name in self.allowed_methods:
             return self.allowed_methods[request.transaction.method.fn_name]
         raise UnrecognizedRequestError("Method not found")
     
-    def is_matching_contract(self, request: Request) -> bool:
+    def is_matching_contract(self, request: TransactionRequest) -> bool:
         return request.transaction.contractType == self.contract_type
 
-    def verify(self, request: Request) -> bool:
+    def verify(self, request: TransactionRequest) -> bool:
         method = self.get_method(request)
         return method.verify(request)
 
@@ -92,13 +92,13 @@ class Verifier:
     def __init__(self, allowed_contracts: list[AllowedContract]) -> None:
         self.allowed_contracts = allowed_contracts
     
-    def get_contract(self, request: Request) -> AllowedContract:
+    def get_contract(self, request: TransactionRequest) -> AllowedContract:
         for contract in self.allowed_contracts:
             if contract.is_matching_contract(request):
                 return contract
         raise UnrecognizedRequestError("Contract type not recognized")
 
-    def verify(self, request: Request) -> bool:
+    def verify(self, request: TransactionRequest) -> bool:
         contract = self.get_contract(request)
         return contract.verify(request)
 

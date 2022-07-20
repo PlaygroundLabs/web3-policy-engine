@@ -1,6 +1,6 @@
 from .verify_permissions import permissions_from_yaml
 from .parse_transaction import Parser
-from .contract_common import InputTransaction, contract_addresses_from_json, argument_groups_from_yaml, Request
+from .contract_common import InputTransaction, contract_addresses_from_json, argument_groups_from_yaml, TransactionRequest
 
 
 class PolicyEngine:
@@ -12,6 +12,6 @@ class PolicyEngine:
     
     def verify(self, transaction : InputTransaction, roles: list[str]) -> bool:
         parsed_transaction = self.parser.parse(transaction)
-        request = Request(parsed_transaction, roles)
+        request = TransactionRequest(parsed_transaction, roles)
         return self.verifier.verify(request)
 

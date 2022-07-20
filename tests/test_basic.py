@@ -8,7 +8,7 @@ from web3_policy_engine.contract_common import (
     ParsedTransaction,
     contract_from_json,
     method_signature,
-    Request,
+    TransactionRequest,
     ArgumentGroup,
     InvalidPermissionsError,
     UnrecognizedRequestError,
@@ -319,7 +319,7 @@ class TestVerify(TestCase):
                 "_arg1": 1,
             },
         )
-        request = Request(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole"])
         self.assertTrue(allowed_method.verify(request))
 
         # failing transaction, no valid role
@@ -332,7 +332,7 @@ class TestVerify(TestCase):
                 "_arg1": 10,
             },
         )
-        request = Request(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole"])
         self.assertRaises(InvalidPermissionsError, allowed_method.verify, request)
 
     def test_method_multiple_args(self):
@@ -370,7 +370,7 @@ class TestVerify(TestCase):
             contract.functions.testMethod1,
             {"_arg1": 1, "_arg2": 1},
         )
-        request = Request(transaction, ["testRole1"])
+        request = TransactionRequest(transaction, ["testRole1"])
         self.assertTrue(allowed_method.verify(request))
 
         # invalid transaction, _arg2=10 not allowed for
@@ -381,7 +381,7 @@ class TestVerify(TestCase):
             contract.functions.testMethod1,
             {"_arg1": 1, "_arg2": 10},
         )
-        request = Request(transaction, ["testRole1"])
+        request = TransactionRequest(transaction, ["testRole1"])
         self.assertRaises(InvalidPermissionsError, allowed_method.verify,request)
 
     def test_multiple_roles(self):
@@ -423,7 +423,7 @@ class TestVerify(TestCase):
                 "_arg2": 1,
             },
         )
-        request = Request(transaction, ["testRole1"])
+        request = TransactionRequest(transaction, ["testRole1"])
         self.assertTrue(allowed_method.verify(request))
 
         # valid transaction, one bad role and one good one
@@ -437,7 +437,7 @@ class TestVerify(TestCase):
                 "_arg2": 10,
             },
         )
-        request = Request(transaction, ["testRole1", "testRole2"])
+        request = TransactionRequest(transaction, ["testRole1", "testRole2"])
         self.assertTrue(allowed_method.verify(request))
 
         # invalid transaction, two bad roles
@@ -451,7 +451,7 @@ class TestVerify(TestCase):
                 "_arg2": 10,
             },
         )
-        request = Request(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole"])
         self.assertRaises(InvalidPermissionsError, allowed_method.verify, request)
 
         # valid transaction, _arg1=1 allowed by testRole1, and _arg1=10 allowed by testRole2
@@ -503,7 +503,7 @@ class TestVerify(TestCase):
                 "_arg1": 1,
             },
         )
-        request = Request(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole"])
         self.assertTrue(allowed_contract.verify(request))
 
         # failing transaction, no valid methods
@@ -516,7 +516,7 @@ class TestVerify(TestCase):
                 "_arg1": 1,
             },
         )
-        request = Request(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole"])
         self.assertRaises(UnrecognizedRequestError, allowed_contract.verify, request)
 
     def test_verifier(self):
@@ -579,7 +579,7 @@ class TestVerify(TestCase):
                 "_arg1": 1,
             },
         )
-        request = Request(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole"])
         self.assertTrue(verifier.verify(request))
 
         # failing transaction, wrong contract type
@@ -592,7 +592,7 @@ class TestVerify(TestCase):
                 "_arg1": 1,
             },
         )
-        request = Request(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole"])
         self.assertRaises(UnrecognizedRequestError, verifier.verify, request)
 
     def test_permission_from_dict(self):
@@ -645,7 +645,7 @@ class TestVerify(TestCase):
                 "_arg1": 1,
             },
         )
-        request = Request(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole"])
         self.assertTrue(permissions.verify(request))
 
         # valid transaction
@@ -658,7 +658,7 @@ class TestVerify(TestCase):
                 "_arg1": 10,
             },
         )
-        request = Request(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole"])
         self.assertTrue(permissions.verify(request))
 
         # invalid transaction, arg not allowed for testRole
@@ -671,7 +671,7 @@ class TestVerify(TestCase):
                 "_arg1": -1,
             },
         )
-        request = Request(transaction, ["testRole"])
+        request = TransactionRequest(transaction, ["testRole"])
         self.assertRaises(InvalidPermissionsError, permissions.verify, request)
 
         # invalid transaction, no perms for testRole2
@@ -684,7 +684,7 @@ class TestVerify(TestCase):
                 "_arg1": 1,
             },
         )
-        request = Request(transaction, ["testRole2"])
+        request = TransactionRequest(transaction, ["testRole2"])
         self.assertRaises(InvalidPermissionsError, permissions.verify, request)
 
 
