@@ -1,6 +1,8 @@
+from typing import Iterable, Type
 from unittest import TestCase
 from hexbytes import HexBytes
 from web3.auto import w3
+from web3.contract import Contract
 from eth_abi.exceptions import InsufficientDataBytes
 
 from web3_policy_engine.contract_common import (
@@ -33,66 +35,36 @@ class TestContract(TestCase):
 
 class TestParser(TestCase):
     def test_basic(self):
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "multiply",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                }
-            ]
-        )
+        """Test parsing a transaction for a simple contract method with one input"""
+        contract = make_basic_contract()
         parser = Parser(
             {HexBytes("0x1234123412341234123412341234123412341234"): contract}
         )
 
-        res = parser.parse(
-            InputTransaction(
-                HexBytes("0x1234123412341234123412341234123412341234"),
-                HexBytes(
-                    "0xc6888fa10000000000000000000000000000000000000000000000000000000000000006"
-                ),
-            )
+        # build valid raw transaction
+        payload = method_signature(contract.functions.testMethod1)
+        payload += HexBytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000006"
         )
+        transaction = InputTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+        )
+
+        res = parser.parse(transaction)
         self.assertEqual(res.contractType, contract)
-        self.assertEqual(res.method.fn_name, "multiply")
+        self.assertEqual(res.method.fn_name, "testMethod1")
         self.assertEqual(len(res.args.keys()), 1)
         self.assertEqual(res.args["_arg1"], 6)
 
-    def test_multiple_method_args(self):
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"},
-                        {"internalType": "address", "name": "_arg2", "type": "address"},
-                        {"internalType": "address", "name": "_arg3", "type": "address"},
-                        {"internalType": "uint256", "name": "_arg4", "type": "uint256"},
-                    ],
-                    "name": "multiply",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                }
-            ]
-        )
+    def test_multiple_args(self):
+        """Test parsing a transaction for contract methods with several arguments"""
+        contract = make_contract_multple_args(["uint256", "address", "address", "uint256"])
         parser = Parser(
             {HexBytes("0x1234123412341234123412341234123412341234"): contract}
         )
-        payload = method_signature(contract.functions.multiply)
-        self.assertEqual(payload, HexBytes("0x9dc807f9"))
+
+        # build valid raw transaction
+        payload = method_signature(contract.functions.testMethod1)
         payload += HexBytes(
             "0x0000000000000000000000000000000000000000000000000000000000000001"
         )
@@ -105,16 +77,13 @@ class TestParser(TestCase):
         payload += HexBytes(
             "0x0000000000000000000000000000000000000000000000000000000000000004"
         )
-
-        res = parser.parse(
-            InputTransaction(
-                HexBytes("0x1234123412341234123412341234123412341234"),
-                HexBytes(payload),
-            )
+        transaction = InputTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
         )
-        self.assertEqual(res.contractType, contract)
 
-        self.assertEqual(res.method.fn_name, "multiply")
+        res = parser.parse(transaction)
+        self.assertEqual(res.contractType, contract)
+        self.assertEqual(res.method.fn_name, "testMethod1")
         self.assertEqual(len(res.args.keys()), 4)
         self.assertEqual(res.args["_arg1"], 1)
         self.assertEqual(
@@ -125,54 +94,36 @@ class TestParser(TestCase):
         )
         self.assertEqual(res.args["_arg4"], 4)
 
-    def test_invalid_contract(self):
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "multiply",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                }
-            ]
+        # build invalid raw transaction, has first argument, but no subsequent ones
+        payload = method_signature(contract.functions.testMethod1)
+        payload += HexBytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000001"
         )
+        transaction = InputTransaction(
+            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+        )
+        self.assertRaises(InsufficientDataBytes, parser.parse, transaction)
+
+    def test_invalid_contract(self):
+        """Test parsing a transaction for an unrecognized contract"""
+        contract = make_basic_contract()
         parser = Parser(
             {HexBytes("0x1234123412341234123412341234123412341234"): contract}
         )
 
-        transaction = InputTransaction(
-            HexBytes("0x2222222222222222222222222222222222222222"),
-            HexBytes(
-                "0xc6888fa10000000000000000000000000000000000000000000000000000000000000006"
-            ),
+        # build invalid raw transaction, no contract at address 0x2222...
+        payload = method_signature(contract.functions.testMethod1)
+        payload += HexBytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000006"
         )
+        transaction = InputTransaction(
+            HexBytes("0x2222222222222222222222222222222222222222"), HexBytes(payload)
+        )
+
         self.assertRaises(ValueError, parser.parse, transaction)
 
     def test_invalid_method_name(self):
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "multiply",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                }
-            ]
-        )
+        contract = make_basic_contract()
         parser = Parser(
             {HexBytes("0x1234123412341234123412341234123412341234"): contract}
         )
@@ -186,30 +137,15 @@ class TestParser(TestCase):
         self.assertRaises(ValueError, parser.parse, transaction)
 
     def test_no_method_args(self):
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "multiply",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                }
-            ]
-        )
+        contract = make_basic_contract()
         parser = Parser(
             {HexBytes("0x1234123412341234123412341234123412341234"): contract}
         )
 
+        payload = method_signature(contract.functions.testMethod1)
         transaction = InputTransaction(
             HexBytes("0x1234123412341234123412341234123412341234"),
-            HexBytes("0xc6888fa1"),
+            payload
         )
         self.assertRaises(InsufficientDataBytes, parser.parse, transaction)
 
@@ -278,36 +214,7 @@ class TestVerify(TestCase):
         allowed_role = AllowedRole({"_arg1": allowed_arg})
         allowed_method = AllowedMethod({"testRole": allowed_role})
 
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "testMethod1",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                },
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "testMethod2",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                },
-            ]
-        )
+        contract = make_basic_contract()
 
         # working transaction
         transaction = ParsedTransaction(
@@ -343,24 +250,7 @@ class TestVerify(TestCase):
             {"testRole1": allowed_role1, "testRole2": allowed_role2}
         )
 
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"},
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"},
-                    ],
-                    "name": "testMethod1",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                }
-            ]
-        )
+        contract = make_contract_multple_args(["uint256", "uint256"])
 
         # working transaction
         transaction = ParsedTransaction(
@@ -382,9 +272,9 @@ class TestVerify(TestCase):
             {"_arg1": 1, "_arg2": 10},
         )
         request = TransactionRequest(transaction, ["testRole1"])
-        self.assertRaises(InvalidPermissionsError, allowed_method.verify,request)
+        self.assertRaises(InvalidPermissionsError, allowed_method.verify, request)
 
-    def test_multiple_roles(self):
+    def test_method_multiple_roles(self):
         allowed_arg1 = AllowedArg([1, 2], [])
         allowed_arg2 = AllowedArg([10], [])
         allowed_role1 = AllowedRole({"_arg1": allowed_arg1, "_arg2": allowed_arg1})
@@ -393,31 +283,14 @@ class TestVerify(TestCase):
             {"testRole1": allowed_role1, "testRole2": allowed_role2}
         )
 
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"},
-                        {"internalType": "uint256", "name": "_arg2", "type": "uint256"},
-                    ],
-                    "name": "testMethod",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                },
-            ]
-        )
+        contract = make_contract_multple_args(["uint256", "uint256"])
 
         # valid transaction, one good role
         transaction = ParsedTransaction(
             HexBytes("0x1234123412341234123412341234123412341234"),
             HexBytes("0x0"),
             contract,
-            contract.functions.testMethod,
+            contract.functions.testMethod1,
             {
                 "_arg1": 1,
                 "_arg2": 1,
@@ -431,7 +304,7 @@ class TestVerify(TestCase):
             HexBytes("0x1234123412341234123412341234123412341234"),
             HexBytes("0x0"),
             contract,
-            contract.functions.testMethod,
+            contract.functions.testMethod1,
             {
                 "_arg1": 10,
                 "_arg2": 10,
@@ -445,7 +318,7 @@ class TestVerify(TestCase):
             HexBytes("0x1234123412341234123412341234123412341234"),
             HexBytes("0x0"),
             contract,
-            contract.functions.testMethod,
+            contract.functions.testMethod1,
             {
                 "_arg1": -1,
                 "_arg2": 10,
@@ -457,36 +330,7 @@ class TestVerify(TestCase):
         # valid transaction, _arg1=1 allowed by testRole1, and _arg1=10 allowed by testRole2
 
     def test_contract(self):
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "testMethod1",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                },
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "testMethod2",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                },
-            ]
-        )
+        contract = make_contract_multiple_methods([["uint256"], ["uint256"]])
 
         allowed_arg = AllowedArg([1, 2], [])
         allowed_role = AllowedRole({"_arg1": allowed_arg})
@@ -520,49 +364,8 @@ class TestVerify(TestCase):
         self.assertRaises(UnrecognizedRequestError, allowed_contract.verify, request)
 
     def test_verifier(self):
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "testMethod1",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                },
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "testMethod2",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                },
-            ]
-        )
-        contract2 = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [],
-                    "name": "testMethod1",
-                    "outputs": [],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                }
-            ]
-        )
+        contract = make_basic_contract()
+        contract2 = make_basic_contract()
         allowed_arg = AllowedArg([1, 2], [])
         allowed_role = AllowedRole({"_arg1": allowed_arg})
         allowed_method = AllowedMethod({"testRole": allowed_role})
@@ -596,36 +399,7 @@ class TestVerify(TestCase):
         self.assertRaises(UnrecognizedRequestError, verifier.verify, request)
 
     def test_permission_from_dict(self):
-        contract = w3.eth.contract(
-            abi=[
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "testMethod1",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                },
-                {
-                    "constant": False,
-                    "inputs": [
-                        {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
-                    ],
-                    "name": "testMethod2",
-                    "outputs": [
-                        {"internalType": "uint256", "name": "_out", "type": "uint256"}
-                    ],
-                    "payable": False,
-                    "stateMutability": "nonpayable",
-                    "type": "function",
-                },
-            ]
-        )
+        contract = make_contract_multiple_methods([["uint256"], ["uint256"]])
         contracts = {"testContract": contract}
         data = {
             "testContract": {
@@ -822,3 +596,64 @@ class TestPolicyEngine(TestCase):
             HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
         )
         self.assertTrue(policy_engine.verify(input_transaction1, ["testRole2"]))
+
+
+def make_basic_contract() -> Type[Contract]:
+    return w3.eth.contract(
+        abi=[
+            {
+                "constant": False,
+                "inputs": [
+                    {"internalType": "uint256", "name": "_arg1", "type": "uint256"}
+                ],
+                "name": "testMethod1",
+                "outputs": [
+                    {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                ],
+                "payable": False,
+                "stateMutability": "nonpayable",
+                "type": "function",
+            }
+        ]
+    )
+
+
+def make_contract_multple_args(types: Iterable[str]) -> Type[Contract]:
+    return w3.eth.contract(
+        abi=[
+            {
+                "constant": False,
+                "inputs": [
+                    {"internalType": "uint256", "name": f"_arg{i+1}", "type": arg_type}
+                    for i, arg_type in enumerate(types)
+                ],
+                "name": "testMethod1",
+                "outputs": [
+                    {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                ],
+                "payable": False,
+                "stateMutability": "nonpayable",
+                "type": "function",
+            }
+        ]
+    )
+
+def make_contract_multiple_methods(types: Iterable[Iterable[str]]) -> Type[Contract]:
+    return w3.eth.contract(
+        abi=[
+            {
+                "constant": False,
+                "inputs": [
+                    {"internalType": "uint256", "name": f"_arg{arg_num+1}", "type": arg_type}
+                    for arg_num, arg_type in enumerate(method_types)
+                ],
+                "name": f"testMethod{method_num+1}",
+                "outputs": [
+                    {"internalType": "uint256", "name": "_out", "type": "uint256"}
+                ],
+                "payable": False,
+                "stateMutability": "nonpayable",
+                "type": "function",
+            } for method_num, method_types in enumerate(types)
+        ]
+    )
