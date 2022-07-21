@@ -3,13 +3,23 @@
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/PlaygroundLabs/web3-policy-engine/tree/main.svg?style=svg&circle-token=ff2d46c95fc96fd5187127c3e3c89e990f64f285)](https://dl.circleci.com/status-badge/redirect/gh/PlaygroundLabs/web3-policy-engine/tree/main)
 
 
-## The goal of this project is to create a policy engine which judges transaction request (along with a list of user roles) and determines if the transaction should be signed and executed, or rejected.
+The goal of this project is to create a policy engine which judges transaction request (along with a list of user roles) and determines if the transaction should be signed and executed, or rejected.
 
 
 
-# Example setup:
+## Example setup:
 
-## addresses.json (this simulates a database):
+imports:
+```python
+from hexbytes import HexBytes
+from web3 import Web3
+
+from web3_policy_engine import (InputTransaction,
+                                InvalidPermissionsError,
+                                PolicyEngine)
+```
+
+addresses.json (this simulates a database):
 ```json
 {
     "contract_names" : {
@@ -21,7 +31,7 @@
 }
 ```
 
-## groups.json (this also simulates a database):
+groups.yml (this also simulates a database):
 ```yaml
 scholars_group1:
   - "0x1021021021021021021021021021021021021021"
@@ -79,7 +89,7 @@ Building a transaction using web3 is a little tricky. Fortunately, this step is 
 contract_address = bytes(HexBytes("0x1111111111111111111111111111111111111111"))
 ERC20 = policy_engine.parser.contracts[contract_address]
 
-def get_transaction_data(sender: bytes, reciever: bytes) -> bytes:
+def get_transaction_data(sender: bytes, receiver: bytes) -> bytes:
     # set some dummy transaction parameters for building the transaction later
     tx_params = {
         "gas": 100000000,
@@ -90,7 +100,7 @@ def get_transaction_data(sender: bytes, reciever: bytes) -> bytes:
     }
 
     # build a transaction, and compute the raw data
-    transaction = ERC20.functions.transferFrom(sender, reciever, amount)
+    transaction = ERC20.functions.transferFrom(sender, receiver, amount)
     tx_data = transaction.buildTransaction(tx_params)["data"]
     return tx_data
 ```
