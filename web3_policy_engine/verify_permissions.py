@@ -55,7 +55,7 @@ class AllowedMethod:
     def verify_arg_all_roles(
         self, request: TransactionRequest, arg_name: str, arg_value: Any
     ) -> list[bool]:
-        """Check if specified argument is allowed by any role the user has"""
+        """For each role given, check if specified argument is allowed"""
         return [
             self.allowed_roles[role].verify_arg(arg_name, arg_value)
             for role in request.roles
@@ -63,7 +63,7 @@ class AllowedMethod:
         ]
 
     def verify(self, request: TransactionRequest) -> bool:
-        """Check if all arguments are allowed by some role the user has"""
+        """Check if all arguments are allowed by at least one role the user has"""
         for arg_name, arg_value in request.transaction.args.items():
             allowed_roles = self.verify_arg_all_roles(request, arg_name, arg_value)
             if not any(allowed_roles):
@@ -83,14 +83,16 @@ class AllowedContract:
         self.allowed_methods = allowed_methods
 
     def get_method(self, request: TransactionRequest) -> AllowedMethod:
-        """Get the corresponding AllowedMethod object for the method the user wants to use"""
-        if request.transaction.method.fn_name in self.allowed_methods:
+        """
+        Get AllowedMethod object for the method specified in request.transaction
+        """
+        if request.transaction.method.fn_name in self.allowed_methods.keys():
             return self.allowed_methods[request.transaction.method.fn_name]
         raise UnrecognizedRequestError("Method not found")
 
-    def is_matching_contract(self, request: TransactionRequest) -> bool:
-        """Check if the user wants to use this contract"""
-        return request.transaction.contractType == self.contract_type
+    def has_type(self, contract_type: Type[Contract]) -> bool:
+        """Check if this object is associated with the specified contract type"""
+        return contract_type == self.contract_type
 
     def verify(self, request: TransactionRequest) -> bool:
         """Verify that the transaction is valid for this contract"""
@@ -113,14 +115,15 @@ class Verifier:
         the user wants to use
         """
         for contract in self.allowed_contracts:
-            if contract.is_matching_contract(request):
+            if contract.has_type(request.transaction.contractType):
                 return contract
         raise UnrecognizedRequestError("Contract type not recognized")
 
     def verify(self, request: TransactionRequest) -> bool:
         """
-        Verify that the user has the required roles to complete the request.
-        Either returns True, or raises an error.
+        Verify that the request is valid
+        (i.e. the specified roles grant the required permissions to complete the transaction).
+        Either returns True or raises an error.
         """
         contract = self.get_contract(request)
         return contract.verify(request)
