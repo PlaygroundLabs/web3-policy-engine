@@ -6,6 +6,7 @@ from web3 import Web3
 from hexbytes import HexBytes
 from typing import Any, Type
 
+
 def contract_from_json(filename: str) -> Type[Contract]:
     with open(filename, "r") as file_handle:
         data = json.load(file_handle)
@@ -50,7 +51,6 @@ def contract_addresses_from_json(
         return contracts, addresses
 
 
-
 class InputTransaction:
     """
     Defines all of the required information for transaction inputs to policy engine
@@ -80,15 +80,15 @@ class ParsedTransaction(InputTransaction):
         self.args = args
 
 
-class Request:
+class TransactionRequest:
     """
     Complete request, with both transaction info and user role info
-    TODO: decide if state should be passed in this
     """
 
     def __init__(self, transaction: ParsedTransaction, roles: list[str]) -> None:
         self.transaction = transaction
         self.roles = roles
+
 
 class ArgumentGroup:
     """
@@ -98,18 +98,22 @@ class ArgumentGroup:
 
     def __init__(self, members: list[Any]):
         self.members = members
-    
+
     def contains(self, member: Any) -> bool:
         return member in self.members
+
 
 def argument_groups_from_yaml(filename: str) -> dict[str, ArgumentGroup]:
     with open(filename) as file_handle:
         data = yaml.safe_load(file_handle)
-        return {group_name:ArgumentGroup(members) for group_name, members in data.items()}
+        return {
+            group_name: ArgumentGroup(members) for group_name, members in data.items()
+        }
 
 
 class InvalidPermissionsError(Exception):
     """Exception raised when the user doesn't have the required permissions"""
+
 
 class UnrecognizedRequestError(Exception):
     """Exception raised when request has an unrecognized method, contract type, etc."""

@@ -4,15 +4,14 @@ from web3.contract import Contract
 from .contract_common import InputTransaction, ParsedTransaction
 
 
-
-
-
-
 class Parser:
+    """Parser for extracting data from a raw transaction"""
+
     def __init__(self, contracts: dict[bytes, Type[Contract]]):
         self.contracts = contracts
 
     def parse(self, transaction: InputTransaction) -> ParsedTransaction:
+        """Parse transaction, extracting a list of inputs (as correct types)"""
         if transaction.to not in self.contracts:
             raise ValueError("not in list of known contracts")
 
