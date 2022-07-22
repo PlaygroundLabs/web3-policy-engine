@@ -25,7 +25,7 @@ class AllowedArg:
         """Check if the value is included in any of the allowed groups"""
         return [group.contains(value) for group in self.group_options]
 
-    def verify(self, value: Any) -> bool:
+    def verify(self, value: Any) -> bool:  # value can be any type used in solidity
         """Check if value is valid or not"""
         return self.verify_option(value) or any(self.verify_groups(value))
 
@@ -108,7 +108,10 @@ class Verifier:
         self.allowed_contracts = allowed_contracts
 
     def get_contract(self, request: TransactionRequest) -> AllowedContract:
-        """Get the corresponding AllowedContract object for the contract the user wants to use"""
+        """
+        Get the corresponding AllowedContract object for the contract type
+        the user wants to use
+        """
         for contract in self.allowed_contracts:
             if contract.is_matching_contract(request):
                 return contract
