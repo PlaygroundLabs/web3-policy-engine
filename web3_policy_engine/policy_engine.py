@@ -43,6 +43,6 @@ class PolicyEngine:
         permission to execute it.
         """
         transaction = InputTransaction(HexBytes(to), HexBytes(data))
-        parsed_transaction = self.parser.parse(transaction)
+        parsed_transaction = self.parser.parse_transaction(transaction)
         request = TransactionRequest(parsed_transaction, roles)
         return self.verifier.verify(request)

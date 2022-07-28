@@ -10,7 +10,7 @@ class Parser:
     def __init__(self, contracts: dict[bytes, Type[Contract]]):
         self.contracts = contracts
 
-    def parse(self, transaction: InputTransaction) -> ParsedTransaction:
+    def parse_transaction(self, transaction: InputTransaction) -> ParsedTransaction:
         """Parse transaction, extracting a list of inputs (as correct types)"""
         if transaction.to not in self.contracts:
             raise ValueError("not in list of known contracts")

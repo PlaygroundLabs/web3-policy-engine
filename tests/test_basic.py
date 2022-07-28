@@ -50,7 +50,7 @@ class TestParser(TestCase):
             HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
         )
 
-        res = parser.parse(transaction)
+        res = parser.parse_transaction(transaction)
         self.assertEqual(res.contractType, contract)
         self.assertEqual(res.method.fn_name, "testMethod1")
         self.assertEqual(len(res.args.keys()), 1)
@@ -83,7 +83,7 @@ class TestParser(TestCase):
             HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
         )
 
-        res = parser.parse(transaction)
+        res = parser.parse_transaction(transaction)
         self.assertEqual(res.contractType, contract)
         self.assertEqual(res.method.fn_name, "testMethod1")
         self.assertEqual(len(res.args.keys()), 4)
@@ -104,7 +104,7 @@ class TestParser(TestCase):
         transaction = InputTransaction(
             HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
         )
-        self.assertRaises(InsufficientDataBytes, parser.parse, transaction)
+        self.assertRaises(InsufficientDataBytes, parser.parse_transaction, transaction)
 
     def test_invalid_contract(self):
         """Test parsing a transaction for an unrecognized contract"""
@@ -122,7 +122,7 @@ class TestParser(TestCase):
             HexBytes("0x2222222222222222222222222222222222222222"), HexBytes(payload)
         )
 
-        self.assertRaises(ValueError, parser.parse, transaction)
+        self.assertRaises(ValueError, parser.parse_transaction, transaction)
 
     def test_invalid_method_name(self):
         """Test that the parser fails when given a method name which doesn't exist"""
@@ -137,7 +137,7 @@ class TestParser(TestCase):
                 "0x343434340000000000000000000000000000000000000000000000000000000000000006"
             ),
         )
-        self.assertRaises(ValueError, parser.parse, transaction)
+        self.assertRaises(ValueError, parser.parse_transaction, transaction)
 
     def test_no_method_args(self):
         """Test that the parser fails when no arguments are specified"""
@@ -150,7 +150,7 @@ class TestParser(TestCase):
         transaction = InputTransaction(
             HexBytes("0x1234123412341234123412341234123412341234"), payload
         )
-        self.assertRaises(InsufficientDataBytes, parser.parse, transaction)
+        self.assertRaises(InsufficientDataBytes, parser.parse_transaction, transaction)
 
 
 class TestVerify(TestCase):
