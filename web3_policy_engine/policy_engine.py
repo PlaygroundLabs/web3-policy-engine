@@ -7,6 +7,8 @@ from .contract_common import (
     TransactionRequest,
 )
 
+from hexbytes import HexBytes
+
 
 class PolicyEngine:
     """
@@ -24,11 +26,12 @@ class PolicyEngine:
     
     # TODO: make load_from_file classmethod
 
-    def verify(self, transaction: InputTransaction, roles: list[str]) -> bool:
+    def verify(self, to: str, data: str, roles: list[str]) -> bool:
         """
         Parse the raw transaction, and then verify that the specified roles grant
         permission to execute it.
         """
+        transaction = InputTransaction(HexBytes(to), HexBytes(data))
         parsed_transaction = self.parser.parse(transaction)
         request = TransactionRequest(parsed_transaction, roles)
         return self.verifier.verify(request)
