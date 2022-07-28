@@ -144,7 +144,7 @@ def isolate_options_and_group_options(
 
 
 def permissions_from_dict(
-    data: dict[str, dict[str, list[dict[str, dict[str, list[Any]]]]]],
+    data: dict[str, dict[str, dict[str, dict[str, list[Any]]]]],
     contracts: dict[str, Type[Contract]],
     groups: dict[str, ArgumentGroup] = {},
 ) -> Verifier:
@@ -174,11 +174,10 @@ def permissions_from_dict(
                                     for arg_name, options in args.items()
                                 },
                             )
-                            for role in roles
                             for role_name, args in role.items()
                         },
                     )
-                    for method_name, roles in methods.items()
+                    for method_name, role in methods.items()
                 },
             )
             for contract, methods in data.items()

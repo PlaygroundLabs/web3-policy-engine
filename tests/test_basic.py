@@ -425,8 +425,8 @@ class TestVerify(TestCase):
         contracts = {"testContract": contract}
         data = {
             "testContract": {
-                "testMethod1": [{"testRole": {"_arg1": [1, 2]}}],
-                "testMethod2": [{"testRole": {"_arg1": [10]}}],
+                "testMethod1": {"testRole": {"_arg1": [1, 2]}},
+                "testMethod2": {"testRole": {"_arg1": [10]}},
             }
         }
         permissions = permissions_from_dict(data, contracts)
