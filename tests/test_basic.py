@@ -29,7 +29,7 @@ from web3_policy_engine.verify_permissions import (
 
 class TestContract(TestCase):
     def test_from_json(self):
-        contract = contract_from_json("data/local_data/abi/test_abi.json")
+        contract = contract_from_json("tests/data/abi/test_abi.json")
         self.assertEqual("testmethod1", contract.functions.testmethod1.fn_name)
 
 
@@ -489,9 +489,9 @@ class TestPolicyEngine(TestCase):
         """Test that you can load a policy engine from file, and that it works as expected"""
         # set up policy engine
         policy_engine = PolicyEngine(
-            "data/local_data/test_contract_addresses.json",
-            "data/local_data/test_config.yml",
-            "data/local_data/test_groups.yml",
+            "tests/data/test_contract_addresses.json",
+            "tests/data/test_config.yml",
+            "tests/data/test_groups.yml",
         )
         contract_address = "0x1234123412341234123412341234123412341234"
 
@@ -534,9 +534,9 @@ class TestPolicyEngine(TestCase):
     def test_from_file_groups(self):
         # set up policy engine
         policy_engine = PolicyEngine(
-            "data/local_data/test_contract_addresses.json",
-            "data/local_data/test_config.yml",
-            "data/local_data/test_groups.yml",
+            "tests/data/test_contract_addresses.json",
+            "tests/data/test_config.yml",
+            "tests/data/test_groups.yml",
         )
         contract_address = "0x1234123412341234123412341234123412341234"
 
