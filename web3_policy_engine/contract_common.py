@@ -30,7 +30,9 @@ def method_signature(method: ContractFunction) -> HexBytes:
         raise ValueError(f"No inputs field in method contract_abi, {method_abi}")
     if method_abi["inputs"] is None:
         raise ValueError("inputs is None")
-    inputs = ",".join([item["type"] for item in method_abi["inputs"]])
+    if not all(["type"] in item for item in method_abi["inputs"]):
+        raise ValueError("'type' does not exist in ")
+    inputs = ",".join([item["type"] for item in method_abi["inputs"]])  # type: ignore
     name = method.fn_name
     return Web3.keccak(text=f"{name}({inputs})")[:4]
 
