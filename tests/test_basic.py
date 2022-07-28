@@ -488,7 +488,7 @@ class TestPolicyEngine(TestCase):
     def test_from_file_basic(self):
         """Test that you can load a policy engine from file, and that it works as expected"""
         # set up policy engine
-        policy_engine = PolicyEngine(
+        policy_engine = PolicyEngine.from_file(
             "tests/data/test_contract_addresses.json",
             "tests/data/test_config.yml",
             "tests/data/test_groups.yml",
@@ -533,7 +533,7 @@ class TestPolicyEngine(TestCase):
 
     def test_from_file_groups(self):
         # set up policy engine
-        policy_engine = PolicyEngine(
+        policy_engine = PolicyEngine.from_file(
             "tests/data/test_contract_addresses.json",
             "tests/data/test_config.yml",
             "tests/data/test_groups.yml",

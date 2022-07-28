@@ -5,9 +5,12 @@ from .contract_common import (
     contract_addresses_from_json,
     argument_groups_from_yaml,
     TransactionRequest,
+    ArgumentGroup,
 )
 
 from hexbytes import HexBytes
+from typing import Type
+from web3.contract import Contract
 
 
 class PolicyEngine:
@@ -17,14 +20,22 @@ class PolicyEngine:
     """
 
     def __init__(
-        self, contract_addresses: str, permissions_config: str, argument_groups: str
+        self,
+        contracts: dict[str, Type[Contract]],
+        addresses: dict[bytes, Type[Contract]],
+        groups: dict[str, ArgumentGroup],
+        permissions_config: str,
     ) -> None:
-        contracts, addresses = contract_addresses_from_json(contract_addresses)
         self.parser = Parser(addresses)
-        groups = argument_groups_from_yaml(argument_groups)
         self.verifier = permissions_from_yaml(permissions_config, contracts, groups)
-    
-    # TODO: make load_from_file classmethod
+
+    @classmethod
+    def from_file(
+        cls, contract_addresses: str, permissions_config: str, argument_groups: str
+    ):
+        contracts, addresses = contract_addresses_from_json(contract_addresses)
+        groups = argument_groups_from_yaml(argument_groups)
+        return cls(contracts, addresses, groups, permissions_config)
 
     def verify(self, to: str, data: str, roles: list[str]) -> bool:
         """
