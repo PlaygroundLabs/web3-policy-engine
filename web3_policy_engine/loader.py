@@ -1,5 +1,6 @@
 from .contract_common import ArgumentGroup
 from .verify_permissions import (
+    AllowedEthMethod,
     AllowedOption,
     Verifier,
     AllowedValue,
@@ -163,7 +164,9 @@ def permissions_from_yaml(
         )
         allowed_messages = allowed_messages_from_dict(message_data, groups)
 
-        allowed_eth_methods = {}
+        # explicitly declaring the type, because allowed_eth_methods
+        # can hold both AllowedEthContractMethod and AllowedEthMessageMethod
+        allowed_eth_methods : dict[str, AllowedEthMethod] = {}
         for eth_method_name in transaction_methods:
             allowed_eth_methods[eth_method_name] = allowed_contracts
         for eth_method_name in message_methods:
