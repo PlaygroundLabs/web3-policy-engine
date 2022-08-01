@@ -15,7 +15,7 @@ transactions:
             - testRole1
         _arg2:
           group1:
-            testRole2
+            testRole1
           group2:
             testRole2
 

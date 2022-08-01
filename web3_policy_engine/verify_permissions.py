@@ -180,7 +180,9 @@ class AllowedEthMessageMethod(AllowedEthMethod):
 
     def verify(self, request: Request) -> bool:
         if not isinstance(request, MessageRequest):
-            raise UnrecognizedRequestError("Expected an eth method which takes a message as input")
+            raise UnrecognizedRequestError(
+                "Expected an eth method which takes a message as input"
+            )
         return self.verify_message_request(request)
 
 

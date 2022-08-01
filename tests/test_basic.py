@@ -737,6 +737,7 @@ class TestPolicyEngine(TestCase):
                 HexBytes(contract_address)
             ].functions.testmethod1
         )
+        contract_address = "0x1234123412341234123412341234123412341234"
 
         # good transaction, testmethod1(_arg1=100) allowed for testRole1
         payload = testmethod1_sig + format_arg(100)

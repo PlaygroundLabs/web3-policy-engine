@@ -40,7 +40,9 @@ class PolicyEngine:
         groups = argument_groups_from_yaml(argument_groups)
         return cls(contracts, addresses, groups, permissions_config)
 
-    def verify_transaction(self, eth_method: str, to: str, data: str, roles: list[str]) -> bool:
+    def verify_transaction(
+        self, eth_method: str, to: str, data: str, roles: list[str]
+    ) -> bool:
         """
         Parse the raw transaction, and then verify that the specified roles grant
         permission to execute it.
@@ -49,7 +51,7 @@ class PolicyEngine:
         parsed_transaction = self.parser.parse_transaction(transaction)
         request = TransactionRequest(parsed_transaction, eth_method, roles)
         return self.verifier.verify(request)
-    
+
     def verify_message(self, eth_method: str, message: str, roles: list[str]) -> bool:
         """
         Parse the message, and then verify that the specified roles grant permission

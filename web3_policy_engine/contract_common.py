@@ -7,6 +7,7 @@ from typing import Any, Type
 Roles = list[str]
 ArgValue = Any
 
+
 class InputTransaction:
     """
     Defines all of the required information for transaction inputs to policy engine
@@ -51,7 +52,9 @@ class TransactionRequest(Request):
     Complete request, with both transaction info and user role info
     """
 
-    def __init__(self, transaction: ParsedTransaction, eth_method: str, roles: list[str]) -> None:
+    def __init__(
+        self, transaction: ParsedTransaction, eth_method: str, roles: list[str]
+    ) -> None:
         self.transaction = transaction
         super().__init__(eth_method, roles)
 
