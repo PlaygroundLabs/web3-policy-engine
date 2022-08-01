@@ -1,9 +1,12 @@
-from .verify_permissions import permissions_from_yaml
+from .loader import (
+    permissions_from_yaml,
+    contract_addresses_from_json,
+    argument_groups_from_yaml,
+)
 from .parse_transaction import Parser
 from .contract_common import (
     InputTransaction,
-    contract_addresses_from_json,
-    argument_groups_from_yaml,
+    MessageRequest,
     TransactionRequest,
     ArgumentGroup,
 )
@@ -37,12 +40,23 @@ class PolicyEngine:
         groups = argument_groups_from_yaml(argument_groups)
         return cls(contracts, addresses, groups, permissions_config)
 
-    def verify(self, to: str, data: str, roles: list[str]) -> bool:
+    def verify_transaction(
+        self, eth_method: str, to: str, data: str, roles: list[str]
+    ) -> bool:
         """
         Parse the raw transaction, and then verify that the specified roles grant
         permission to execute it.
         """
         transaction = InputTransaction(HexBytes(to), HexBytes(data))
-        parsed_transaction = self.parser.parse(transaction)
-        request = TransactionRequest(parsed_transaction, roles)
+        parsed_transaction = self.parser.parse_transaction(transaction)
+        request = TransactionRequest(parsed_transaction, eth_method, roles)
+        return self.verifier.verify(request)
+
+    def verify_message(self, eth_method: str, message: str, roles: list[str]) -> bool:
+        """
+        Parse the message, and then verify that the specified roles grant permission
+        to sign it
+        """
+        parsed_message = self.parser.parse_message(HexBytes(message))
+        request = MessageRequest(parsed_message, eth_method, roles)
         return self.verifier.verify(request)

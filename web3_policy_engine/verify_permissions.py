@@ -1,72 +1,71 @@
 from typing import Any, Type
-import yaml
 from web3.contract import Contract
 
 from web3_policy_engine.contract_common import (
+    MessageRequest,
+    Request,
     TransactionRequest,
     InvalidPermissionsError,
     UnrecognizedRequestError,
     ArgumentGroup,
+    Roles,
+    ArgValue,
 )
 
 
-class AllowedArg:
-    """Low-level verifier for arguments"""
-
-    def __init__(self, options: list[Any], group_options: list[ArgumentGroup]) -> None:
-        self.options = options
-        self.group_options = group_options
-
-    def verify_option(self, value: Any) -> bool:
-        """Check if the value is in the list of allowed options"""
-        return value in self.options
-
-    def verify_groups(self, value: Any) -> list[bool]:
-        """Check if the value is included in any of the allowed groups"""
-        return [group.contains(value) for group in self.group_options]
-
-    def verify(self, value: Any) -> bool:  # value can be any type used in solidity
-        """Check if value is valid or not"""
-        return self.verify_option(value) or any(self.verify_groups(value))
-
-
-class AllowedRole:
-    """Low-level verifier for roles"""
-
-    def __init__(self, allowed_args: dict[str, AllowedArg]) -> None:
-        self.allowed_args = allowed_args
-
-    def verify_arg(self, arg_name: str, arg_value: Any) -> bool:
-        """Check if the specified argument is allowed to have specified value"""
-        if arg_name not in self.allowed_args:
-            # if a role doesn't mention an argument, all values should be allowed
-            return True
-
-        allowed_arg = self.allowed_args[arg_name]
-        return allowed_arg.verify(arg_value)
-
-
-class AllowedMethod:
-    """Low-level verifier for contract methods"""
-
-    def __init__(self, allowed_roles: dict[str, AllowedRole]) -> None:
+class AllowedOption:
+    def __init__(self, option: Any, allowed_roles: Roles) -> None:
+        self.option = option
         self.allowed_roles = allowed_roles
 
-    def verify_arg_all_roles(
-        self, request: TransactionRequest, arg_name: str, arg_value: Any
-    ) -> list[bool]:
-        """For each role given, check if specified argument is allowed"""
-        return [
-            self.allowed_roles[role].verify_arg(arg_name, arg_value)
-            for role in request.roles
-            if role in self.allowed_roles
-        ]
+    def verify_value(self, value: ArgValue) -> bool:
+        raise NotImplementedError()
+
+    def verify_roles(self, user_roles: Roles) -> bool:
+        return any([role in self.allowed_roles for role in user_roles])
+
+    def verify(self, value: ArgValue, user_roles: Roles) -> bool:
+        return self.verify_value(value) and self.verify_roles(user_roles)
+
+
+class AllowedValue(AllowedOption):
+    def __init__(self, value: ArgValue, allowed_roles: Roles) -> None:
+        super().__init__(value, allowed_roles)
+
+    def verify_value(self, value: ArgValue) -> bool:
+        return value == self.option
+
+
+class AllowedGroup(AllowedOption):
+    def __init__(self, group: ArgumentGroup, allowed_roles: Roles) -> None:
+        super().__init__(group, allowed_roles)
+
+    def verify_value(self, value: ArgValue) -> bool:
+        return self.option.contains(value)
+
+
+class AllowedContractMethod:
+    """Low-level verifier for contract methods"""
+
+    def __init__(self, allowed_args: dict[str, list[AllowedOption]]) -> None:
+        self.allowed_args = allowed_args
+
+    def verify_arg(self, arg_name: str, arg_value: ArgValue, user_roles: Roles) -> bool:
+        if arg_name not in self.allowed_args:
+            raise UnrecognizedRequestError(f"Unknown argument name '{arg_name}'")
+        allowed_args_to_check = self.allowed_args[arg_name]
+        result = [arg.verify(arg_value, user_roles) for arg in allowed_args_to_check]
+
+        # if any allowed args are ok with the value, then it's good
+        return any(result)
 
     def verify(self, request: TransactionRequest) -> bool:
         """Check if all arguments are allowed by at least one role the user has"""
+
         for arg_name, arg_value in request.transaction.args.items():
-            allowed_roles = self.verify_arg_all_roles(request, arg_name, arg_value)
-            if not any(allowed_roles):
+            allowed = self.verify_arg(arg_name, arg_value, request.roles)
+
+            if not allowed:
                 raise InvalidPermissionsError(
                     f"Argument {arg_name}={arg_value} not allowed for any role"
                 )
@@ -77,16 +76,18 @@ class AllowedContract:
     """Verifier for smart contracts"""
 
     def __init__(
-        self, contract_type: Type[Contract], allowed_methods: dict[str, AllowedMethod]
+        self,
+        contract_type: Type[Contract],
+        allowed_methods: dict[str, AllowedContractMethod],
     ) -> None:
         self.contract_type = contract_type
         self.allowed_methods = allowed_methods
 
-    def get_method(self, request: TransactionRequest) -> AllowedMethod:
+    def get_method(self, request: TransactionRequest) -> AllowedContractMethod:
         """
         Get AllowedMethod object for the method specified in request.transaction
         """
-        if request.transaction.method.fn_name in self.allowed_methods.keys():
+        if request.transaction.method.fn_name in self.allowed_methods:
             return self.allowed_methods[request.transaction.method.fn_name]
         raise UnrecognizedRequestError("Method not found")
 
@@ -100,13 +101,30 @@ class AllowedContract:
         return method.verify(request)
 
 
-class Verifier:
+class AllowedEthMethod:
     """
-    Highest-level verifier. Examine a (parsed) request by a user,
-    and decides if the user has the required permissions.
+    Verifier for ethereum methods (e.g. eth_sendTransaction).
+    Currently, only the following are supported:
+        - sendTransaction
+        - signTransaction
+        - sign
+        - personal_sign
     """
 
-    def __init__(self, allowed_contracts: list[AllowedContract]) -> None:
+    def verify(self, request: Request) -> bool:
+        """
+        Verify that the request is valid
+        (i.e. the specified roles grant the required permissions to sign the message).
+        Either returns True or raises an error.
+        """
+        raise NotImplementedError()
+
+
+class AllowedEthContractMethod(AllowedEthMethod):
+    def __init__(
+        self,
+        allowed_contracts: list[AllowedContract],
+    ) -> None:
         self.allowed_contracts = allowed_contracts
 
     def get_contract(self, request: TransactionRequest) -> AllowedContract:
@@ -119,80 +137,65 @@ class Verifier:
                 return contract
         raise UnrecognizedRequestError("Contract type not recognized")
 
-    def verify(self, request: TransactionRequest) -> bool:
+    def verify_transaction_request(self, request: TransactionRequest) -> bool:
         """
-        Verify that the request is valid
-        (i.e. the specified roles grant the required permissions to complete the transaction).
-        Either returns True or raises an error.
+        Verify a transaction (used for eth_signTransaction or eth_sendTransaction)
         """
         contract = self.get_contract(request)
         return contract.verify(request)
 
-
-def isolate_options_and_group_options(
-    options: list[Any], groups: dict[str, ArgumentGroup]
-) -> tuple[list[Any], list[ArgumentGroup]]:
-    """
-    Helper function for permissions_from_dict.
-    Take a list of argument options as specified in a config file, and
-    separates them into options (e.g. "1"), and groups (e.g. "managers")
-    """
-    return (
-        [option for option in options if option not in groups.keys()],
-        [group for group_name, group in groups.items() if group_name in options],
-    )
-
-
-def permissions_from_dict(
-    data: dict[str, dict[str, dict[str, dict[str, list[Any]]]]],
-    contracts: dict[str, Type[Contract]],
-    groups: dict[str, ArgumentGroup] = {},
-) -> Verifier:
-    """
-    Load in a verifier object from a dictionary.
-    Typically used to load from a config file (e.g. yaml, json)
-    """
-
-    for contract_name in data.keys():
-        if contract_name not in contracts.keys():
-            raise ValueError(f"Unknown contract: {contract_name}")
-
-    verifier = Verifier(
-        [
-            AllowedContract(
-                contracts[contract],
-                {
-                    method_name: AllowedMethod(
-                        {
-                            role_name: AllowedRole(
-                                {
-                                    arg_name: AllowedArg(
-                                        *isolate_options_and_group_options(
-                                            options, groups
-                                        ),
-                                    )
-                                    for arg_name, options in args.items()
-                                },
-                            )
-                            for role_name, args in role.items()
-                        },
-                    )
-                    for method_name, role in methods.items()
-                },
+    def verify(self, request: Request) -> bool:
+        if not isinstance(request, TransactionRequest):
+            raise UnrecognizedRequestError(
+                "Expected an eth method which attempts to interact with a contract"
             )
-            for contract, methods in data.items()
-            if contract in contracts
+        return self.verify_transaction_request(request)
+
+
+class AllowedEthMessageMethod(AllowedEthMethod):
+    def __init__(
+        self,
+        allowed_messages: list[AllowedOption],
+    ) -> None:
+        self.allowed_messages = allowed_messages
+
+    def verify_message_request(self, request: MessageRequest) -> bool:
+        """
+        Verify a message (used for eth_sign or personal_sign)
+        """
+        allowed_message_results = [
+            message.verify(request.message, request.roles)
+            for message in self.allowed_messages
         ]
-    )
-    return verifier
+
+        if any(allowed_message_results):
+            return True
+
+        raise InvalidPermissionsError(
+            f"message {request.message} not allowed for any role."
+        )
+
+    def verify(self, request: Request) -> bool:
+        if not isinstance(request, MessageRequest):
+            raise UnrecognizedRequestError(
+                "Expected an eth method which takes a message as input"
+            )
+        return self.verify_message_request(request)
 
 
-def permissions_from_yaml(
-    filename: str,
-    contracts: dict[str, Type[Contract]],
-    groups: dict[str, ArgumentGroup] = {},
-) -> Verifier:
-    """Load a Verifier object from a yaml file"""
-    with open(filename, "r") as file_handle:
-        data = yaml.safe_load(file_handle)
-        return permissions_from_dict(data, contracts, groups)
+class Verifier:
+    """
+    Highest-level verifier. Examine a (parsed) request by a user,
+    and decides if the user has the required permissions.
+    """
+
+    def __init__(self, allowed_eth_methods: dict[str, AllowedEthMethod]) -> None:
+        self.allowed_eth_methods = allowed_eth_methods
+
+    def verify(self, request: Request) -> bool:
+        """
+        Verify a user request
+        """
+        if request.eth_method not in self.allowed_eth_methods:
+            raise UnrecognizedRequestError("eth method not recognized")
+        return self.allowed_eth_methods[request.eth_method].verify(request)

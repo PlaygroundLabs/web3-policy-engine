@@ -15,7 +15,7 @@ transactions:
             - testRole1
         _arg2:
           group1:
-            testRole1
+            testRole2
           group2:
             testRole2
 
@@ -25,10 +25,6 @@ messages:
   message2:
     - testRole1
     - testRole2
-
-transaction_methods:
-  - eth_signTransaction
-  - eth_sendTransaction
 
 message_methods:
   - eth_sign

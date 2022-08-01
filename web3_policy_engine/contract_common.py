@@ -1,56 +1,11 @@
-import json
-import yaml
+from abc import ABC
 from web3.contract import Contract, ContractFunction
-from web3.auto import w3
-from web3 import Web3
-from hexbytes import HexBytes
 from typing import Any, Type
 
 
-def contract_from_json(filename: str) -> Type[Contract]:
-    with open(filename, "r") as file_handle:
-        data = json.load(file_handle)
-        return w3.eth.contract(abi=data["abi"])
-
-
-def method_signature(method: ContractFunction) -> HexBytes:
-    if method.contract_abi is None:
-        raise ValueError("contract_abi is None")
-
-    method_abi = None
-    for item in method.contract_abi:
-        if "name" in item and item["name"] == method.fn_name:
-            method_abi = item
-            break
-
-    if method_abi is None:
-        raise ValueError(f"Method {method.fn_name} not found in abi")
-
-    if "inputs" not in method_abi:
-        raise ValueError(f"No inputs field in method contract_abi, {method_abi}")
-    if method_abi["inputs"] is None:
-        raise ValueError("inputs is None")
-    if not all(["type" in item for item in method_abi["inputs"]]):
-        raise ValueError("contract abi must describe types of all method inputs")
-    inputs = ",".join([item["type"] for item in method_abi["inputs"]])  # type: ignore
-    name = method.fn_name
-    return Web3.keccak(text=f"{name}({inputs})")[:4]
-
-
-def contract_addresses_from_json(
-    filename: str,
-) -> tuple[dict[str, Type[Contract]], dict[bytes, Type[Contract]]]:
-    with open(filename) as file_handle:
-        data = json.load(file_handle)
-        contracts = {
-            contract_name: contract_from_json(filename)
-            for contract_name, filename in data["contract_names"].items()
-        }
-        addresses = {
-            bytes(HexBytes(address)): contracts[contract_name]
-            for address, contract_name in data["addresses"].items()
-        }
-        return contracts, addresses
+# typedefs for commonly used things
+Roles = list[str]
+ArgValue = Any
 
 
 class InputTransaction:
@@ -74,7 +29,7 @@ class ParsedTransaction(InputTransaction):
         data: bytes,
         contractType: Type[Contract],
         method: ContractFunction,
-        args: dict[str, Any],
+        args: dict[str, ArgValue],
     ):
         super().__init__(to, data)
         self.contractType = contractType
@@ -82,14 +37,36 @@ class ParsedTransaction(InputTransaction):
         self.args = args
 
 
-class TransactionRequest:
+class Request(ABC):
+    """
+    Base abstract Request class
+    """
+
+    def __init__(self, eth_method: str, roles: Roles) -> None:
+        self.eth_method = eth_method
+        self.roles = roles
+
+
+class TransactionRequest(Request):
     """
     Complete request, with both transaction info and user role info
     """
 
-    def __init__(self, transaction: ParsedTransaction, roles: list[str]) -> None:
+    def __init__(
+        self, transaction: ParsedTransaction, eth_method: str, roles: list[str]
+    ) -> None:
         self.transaction = transaction
-        self.roles = roles
+        super().__init__(eth_method, roles)
+
+
+class MessageRequest(Request):
+    """
+    Wrapper for message requests, as used in sign or personal_sign
+    """
+
+    def __init__(self, message: str, eth_method: str, roles: list[str]) -> None:
+        self.message = message
+        super().__init__(eth_method, roles)
 
 
 class ArgumentGroup:
@@ -98,19 +75,11 @@ class ArgumentGroup:
     TODO: consider integrating this with SQLAlchemy for easier database access
     """
 
-    def __init__(self, members: list[Any]):
+    def __init__(self, members: list[ArgValue]):
         self.members = members
 
-    def contains(self, member: Any) -> bool:
+    def contains(self, member: ArgValue) -> bool:
         return member in self.members
-
-
-def argument_groups_from_yaml(filename: str) -> dict[str, ArgumentGroup]:
-    with open(filename) as file_handle:
-        data = yaml.safe_load(file_handle)
-        return {
-            group_name: ArgumentGroup(members) for group_name, members in data.items()
-        }
 
 
 class InvalidPermissionsError(Exception):
