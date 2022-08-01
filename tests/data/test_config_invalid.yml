@@ -26,9 +26,5 @@ messages:
     - testRole1
     - testRole2
 
-transaction_methods:
-  - eth_signTransaction
-  - eth_sendTransaction
-
 message_methods:
   - eth_sign

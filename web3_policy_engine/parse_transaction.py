@@ -20,3 +20,7 @@ class Parser:
         return ParsedTransaction(
             transaction.to, transaction.data, contract, method, args
         )
+
+    def parse_message(self, message: bytes) -> str:
+        """Parse message, decoding it into a str"""
+        return message.decode("ascii")
