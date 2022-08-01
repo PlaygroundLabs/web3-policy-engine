@@ -101,9 +101,6 @@ class AllowedContract:
         return method.verify(request)
 
 
-AllowedMessage = AllowedOption
-
-
 class AllowedEthMethod:
     """
     Verifier for ethereum methods (e.g. eth_sendTransaction).
