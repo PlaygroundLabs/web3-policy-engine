@@ -83,7 +83,7 @@ def get_allowed_option(
     Take a list of argument options as specified in a config file, and
     separates them into options (e.g. "1"), and groups (e.g. "managers")
     """
-    if option in groups.keys():
+    if option in groups:
         return AllowedGroup(groups[option], roles)
     return AllowedValue(option, roles)
 
@@ -99,7 +99,7 @@ def allowed_contracts_from_dict(
     """
 
     for contract_name in transaction_data:
-        if contract_name not in contracts.keys():
+        if contract_name not in contracts:
             raise ValueError(f"Unknown contract: {contract_name}")
 
     allowed_contracts = [
@@ -151,7 +151,7 @@ def permissions_from_yaml(
             "transaction_methods",
             "message_methods",
         ):
-            if item not in data.keys():
+            if item not in data:
                 raise ValueError(f"{item} is required in permissions configuration")
 
         transaction_data = data["transactions"]

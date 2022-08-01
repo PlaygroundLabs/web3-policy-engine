@@ -51,7 +51,7 @@ class AllowedContractMethod:
         self.allowed_args = allowed_args
 
     def verify_arg(self, arg_name: str, arg_value: ArgValue, user_roles: Roles) -> bool:
-        if arg_name not in self.allowed_args.keys():
+        if arg_name not in self.allowed_args:
             raise UnrecognizedRequestError(f"Unknown argument name '{arg_name}'")
         allowed_args_to_check = self.allowed_args[arg_name]
         result = [arg.verify(arg_value, user_roles) for arg in allowed_args_to_check]
@@ -87,7 +87,7 @@ class AllowedContract:
         """
         Get AllowedMethod object for the method specified in request.transaction
         """
-        if request.transaction.method.fn_name in self.allowed_methods.keys():
+        if request.transaction.method.fn_name in self.allowed_methods:
             return self.allowed_methods[request.transaction.method.fn_name]
         raise UnrecognizedRequestError("Method not found")
 
@@ -196,6 +196,6 @@ class Verifier:
         """
         Verify a user request
         """
-        if request.eth_method not in self.allowed_eth_methods.keys():
+        if request.eth_method not in self.allowed_eth_methods:
             raise UnrecognizedRequestError("eth method not recognized")
         return self.allowed_eth_methods[request.eth_method].verify(request)
