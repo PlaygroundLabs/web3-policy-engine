@@ -1,0 +1,18 @@
+testContract:
+    testmethod1:
+      testRole1:
+        _arg1:
+          - 100
+          - 200
+    testmethod2:
+      testRole1:
+        _arg1:
+          - 100
+          - 200
+        _arg2:
+          - group1
+      testRole2:
+        _arg1:
+          - 100
+        _arg2:
+          - group2

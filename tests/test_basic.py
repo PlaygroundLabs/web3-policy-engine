@@ -29,7 +29,7 @@ from web3_policy_engine.verify_permissions import (
 
 class TestContract(TestCase):
     def test_from_json(self):
-        contract = contract_from_json("data/local_data/abi/test_abi.json")
+        contract = contract_from_json("tests/data/abi/test_abi.json")
         self.assertEqual("testmethod1", contract.functions.testmethod1.fn_name)
 
 
@@ -425,8 +425,8 @@ class TestVerify(TestCase):
         contracts = {"testContract": contract}
         data = {
             "testContract": {
-                "testMethod1": [{"testRole": {"_arg1": [1, 2]}}],
-                "testMethod2": [{"testRole": {"_arg1": [10]}}],
+                "testMethod1": {"testRole": {"_arg1": [1, 2]}},
+                "testMethod2": {"testRole": {"_arg1": [10]}},
             }
         }
         permissions = permissions_from_dict(data, contracts)
@@ -488,135 +488,98 @@ class TestPolicyEngine(TestCase):
     def test_from_file_basic(self):
         """Test that you can load a policy engine from file, and that it works as expected"""
         # set up policy engine
-        policy_engine = PolicyEngine(
-            "data/local_data/test_contract_addresses.json",
-            "data/local_data/test_config.yml",
-            "data/local_data/test_groups.yml",
+        policy_engine = PolicyEngine.from_file(
+            "tests/data/test_contract_addresses.json",
+            "tests/data/test_config.yml",
+            "tests/data/test_groups.yml",
         )
+        contract_address = "0x1234123412341234123412341234123412341234"
 
         # good transaction, testmethod1(_arg1=100) allowed for testRole1
-        payload = HexBytes(
-            "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064"
+        self.assertTrue(
+            policy_engine.verify(
+                contract_address,
+                "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064",
+                ["testRole1"],
+            ),
         )
-        input_transaction1 = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
-        )
-        self.assertTrue(policy_engine.verify(input_transaction1, ["testRole1"]))
 
         # bad transaction, testmethod1(_arg1=1) not allowed for testRole1
-        payload = HexBytes(
-            "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000001"
-        )
-        input_transaction1 = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
-        )
         self.assertRaises(
             InvalidPermissionsError,
             policy_engine.verify,
-            input_transaction1,
+            contract_address,
+            "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000001",
             ["testRole1"],
         )
 
         # bad transaction, testRole2 not allowed to use testmethod1
-        payload = HexBytes(
-            "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064"
-        )
-        input_transaction1 = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
-        )
         self.assertRaises(
             InvalidPermissionsError,
             policy_engine.verify,
-            input_transaction1,
+            contract_address,
+            "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064",
             ["testRole2"],
         )
 
         # good transaction, testRole2 not allowed to use testmethod1, but testRole1 is
-        payload = HexBytes(
-            "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064"
-        )
-        input_transaction1 = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
-        )
         self.assertTrue(
-            policy_engine.verify(input_transaction1, ["testRole2", "testRole1"])
+            policy_engine.verify(
+                contract_address,
+                "0x6ba4caa90000000000000000000000000000000000000000000000000000000000000064",
+                ["testRole2", "testRole1"],
+            )
         )
 
     def test_from_file_groups(self):
         # set up policy engine
-        policy_engine = PolicyEngine(
-            "data/local_data/test_contract_addresses.json",
-            "data/local_data/test_config.yml",
-            "data/local_data/test_groups.yml",
+        policy_engine = PolicyEngine.from_file(
+            "tests/data/test_contract_addresses.json",
+            "tests/data/test_config.yml",
+            "tests/data/test_groups.yml",
         )
+        contract_address = "0x1234123412341234123412341234123412341234"
 
         # testmethod2 requires a uint256 and an address
 
         # valid transaction, _arg1=100, arg2=0x1212... is allowed for testRole1
         payload = (
-            HexBytes("0x9bfff434")
-            + HexBytes(
-                "0000000000000000000000000000000000000000000000000000000000000064"
-            )
-            + HexBytes(
-                "0000000000000000000000001212121212121212121212121212121212121212"
-                "0000000000000000000000001212121212121212121212121212121212121212"
-            )
+            "0x9bfff434"
+            + "0000000000000000000000000000000000000000000000000000000000000064"
+            + "0000000000000000000000001212121212121212121212121212121212121212"
+            + "0000000000000000000000001212121212121212121212121212121212121212"
         )
-        input_transaction1 = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
-        )
-        self.assertTrue(policy_engine.verify(input_transaction1, ["testRole1"]))
+        self.assertTrue(policy_engine.verify(contract_address, payload, ["testRole1"]))
 
         # valid transaction, _arg1=100,arg2=3434... is allowed for testRole1
         payload = (
-            HexBytes("0x9bfff434")
-            + HexBytes(
-                "0000000000000000000000000000000000000000000000000000000000000064"
-            )
-            + HexBytes(
-                "0000000000000000000000003434343434343434343434343434343434343434"
-            )
+            "0x9bfff434"
+            + "0000000000000000000000000000000000000000000000000000000000000064"
+            + "0000000000000000000000003434343434343434343434343434343434343434"
         )
-        input_transaction1 = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
-        )
-        self.assertTrue(policy_engine.verify(input_transaction1, ["testRole1"]))
+        self.assertTrue(policy_engine.verify(contract_address, payload, ["testRole1"]))
 
         # invalid transaction, _arg2 not allowed for testRole1 when _arg1 = 200
         payload = (
-            HexBytes("0x9bfff434")
-            + HexBytes(
-                "00000000000000000000000000000000000000000000000000000000000000C8"
-            )
-            + HexBytes(
-                "0000000000000000000000007878787878787878787878787878787878787878"
-            )
-        )
-        input_transaction1 = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+            "0x9bfff434"
+            + "00000000000000000000000000000000000000000000000000000000000000C8"
+            + "0000000000000000000000007878787878787878787878787878787878787878"
         )
         self.assertRaises(
             InvalidPermissionsError,
             policy_engine.verify,
-            input_transaction1,
+            contract_address,
+            payload,
             ["testRole1"],
         )
 
         # valid transaction, _arg2 is allowed when _arg1=100 for role testRole2
         payload = (
-            HexBytes("0x9bfff434")
-            + HexBytes(
-                "0000000000000000000000000000000000000000000000000000000000000064"
-            )
-            + HexBytes(
-                "0000000000000000000000007878787878787878787878787878787878787878"
-            )
+            "0x9bfff434"
+            + "0000000000000000000000000000000000000000000000000000000000000064"
+            + "0000000000000000000000007878787878787878787878787878787878787878"
         )
-        input_transaction1 = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
-        )
-        self.assertTrue(policy_engine.verify(input_transaction1, ["testRole2"]))
+        self.assertTrue(policy_engine.verify(contract_address, payload, ["testRole2"]))
 
 
 def make_basic_contract() -> Type[Contract]:
