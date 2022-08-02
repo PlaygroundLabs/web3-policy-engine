@@ -1,7 +1,9 @@
 from typing import Type
 from web3.contract import Contract
+from eth_abi.exceptions import InsufficientDataBytes
+from hexbytes import HexBytes
 
-from .contract_common import InputTransaction, ParsedTransaction
+from .contract_common import InputTransaction, ParsedTransaction, ParseError
 
 
 class Parser:
@@ -9,18 +11,41 @@ class Parser:
 
     def __init__(self, contracts: dict[bytes, Type[Contract]]):
         self.contracts = contracts
+    
+    def str_to_bytes(self, data: str) -> HexBytes:
+        try:
+            hex_data = HexBytes(data)
+        except Exception as e:
+            raise ParseError(f"'{data}' has bad byte structure: {e}")
+        return hex_data
+
 
     def parse_transaction(self, transaction: InputTransaction) -> ParsedTransaction:
         """Parse transaction, extracting a list of inputs (as correct types)"""
-        if transaction.to not in self.contracts:
-            raise ValueError("not in list of known contracts")
+        to = self.str_to_bytes(transaction.to)
+        data = self.str_to_bytes(transaction.data)
 
-        contract = self.contracts[transaction.to]
-        method, args = contract.decode_function_input(transaction.data)
+        if to not in self.contracts:
+            raise ParseError("not in list of known contracts")
+
+        contract = self.contracts[to]
+        try:
+            method, args = contract.decode_function_input(transaction.data)
+        except InsufficientDataBytes as e:
+            raise ParseError(f'Bad args for contract method: {e}')
+
         return ParsedTransaction(
-            transaction.to, transaction.data, contract, method, args
+            to, data, contract, method, args
         )
 
-    def parse_message(self, message: bytes) -> str:
+    def parse_message(self, message: str) -> str:
         """Parse message, decoding it into a str"""
-        return message.decode("ascii")
+        hex_str = self.str_to_bytes(message)
+
+        try:
+            text = hex_str.decode("ascii")
+        except UnicodeDecodeError as e:
+            raise ParseError(f"Failed to parse message: {e}")
+        
+        return text
+        

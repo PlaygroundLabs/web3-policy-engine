@@ -13,6 +13,7 @@ from web3_policy_engine.contract_common import (
     Request,
     TransactionRequest,
     ArgumentGroup,
+    ParseError,
     InvalidPermissionsError,
     UnrecognizedRequestError,
 )
@@ -113,7 +114,7 @@ class TestParser(TestCase):
         transaction = InputTransaction(
             HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
         )
-        self.assertRaises(InsufficientDataBytes, parser.parse_transaction, transaction)
+        self.assertRaises(ParseError, parser.parse_transaction, transaction)
 
     def test_transaction_invalid_contract(self):
         """Test parsing a transaction for an unrecognized contract"""
@@ -131,7 +132,7 @@ class TestParser(TestCase):
             HexBytes("0x2222222222222222222222222222222222222222"), HexBytes(payload)
         )
 
-        self.assertRaises(ValueError, parser.parse_transaction, transaction)
+        self.assertRaises(ParseError, parser.parse_transaction, transaction)
 
     def test_transaction_invalid_method_name(self):
         """Test that the parser fails when given a method name which doesn't exist"""
@@ -159,7 +160,7 @@ class TestParser(TestCase):
         transaction = InputTransaction(
             HexBytes("0x1234123412341234123412341234123412341234"), payload
         )
-        self.assertRaises(InsufficientDataBytes, parser.parse_transaction, transaction)
+        self.assertRaises(ParseError, parser.parse_transaction, transaction)
 
     def test_message_basic(self):
         """Test basic functionality of parse_message"""

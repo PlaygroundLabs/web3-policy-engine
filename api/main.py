@@ -1,11 +1,7 @@
 from typing import Generator
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import ORJSONResponse
-from web3_policy_engine import (
-    PolicyEngine,
-    UnrecognizedRequestError,
-    InvalidPermissionsError,
-)
+from web3_policy_engine import PolicyEngine, PolicyEngineError
 
 from .schemas import MessageRequest, RequestResponse
 
@@ -42,10 +38,6 @@ async def verify_message(
         policy_engine.verify_message(request.json_rpc.method, message, request.roles)
         output = RequestResponse(success=True, message="")
         return output
-    except UnrecognizedRequestError as e:
-        output = RequestResponse(success=True, message=str(e))
-        return output
-    except InvalidPermissionsError as e:
-        output = RequestResponse(success=True, message=str(e))
-        return output
+    except PolicyEngineError as e:
+        return RequestResponse(success=False, message=str(e))
     raise HTTPException(500, "Shouldn't get here")
