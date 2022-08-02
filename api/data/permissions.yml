@@ -1,0 +1,10 @@
+transactions: {}
+
+messages:
+  Pegaxy:
+    - player
+
+transaction_methods: {}
+
+message_methods:
+  - personal_sign

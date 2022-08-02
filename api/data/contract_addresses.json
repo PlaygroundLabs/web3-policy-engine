@@ -1,0 +1,9 @@
+{
+    "contract_names" : {
+        "testContract" : "tests/data/abi/test_abi.json"
+    },
+    "addresses" : {
+        "0x1234123412341234123412341234123412341234": "testContract",
+        "0x5678567856785678567856785678567856785678": "testContract"
+    }
+}
