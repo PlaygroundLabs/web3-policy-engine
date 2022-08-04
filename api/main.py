@@ -3,7 +3,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import ORJSONResponse
 from web3_policy_engine import PolicyEngine, PolicyEngineError
 
-from .schemas import MessageRequest, RequestResponse
+from .schemas import MessageRequest, RequestResponse, TransactionRequest
 
 app = FastAPI(default_response_class=ORJSONResponse)
 
@@ -27,17 +27,29 @@ async def verify_message(
 ) -> RequestResponse:
 
     message = request.json_rpc.params[0]
-    # return JsonRpcRequestOutput(
-    #     id=request.json_rpc.id,
-    #     jsonrpc=request.json_rpc.jsonrpc,
-    #     method=request.json_rpc.method,
-    #     result=message,
-    # )
 
     try:
         policy_engine.verify_message(request.json_rpc.method, message, request.roles)
-        output = RequestResponse(success=True, message="")
-        return output
+        return RequestResponse(success=True, message="")
+    except PolicyEngineError as e:
+        return RequestResponse(success=False, message=str(e))
+    raise HTTPException(500, "Shouldn't get here")
+
+
+@app.post("/transaction", response_model=RequestResponse)
+async def verify_transaction(
+    request: TransactionRequest,
+    policy_engine: PolicyEngine = Depends(get_policy_engine),
+) -> RequestResponse:
+
+    try:
+        policy_engine.verify_transaction(
+            request.json_rpc.method,
+            request.json_rpc.params[0].to,
+            request.json_rpc.params[0].data,
+            request.roles,
+        )
+        return RequestResponse(success=True, message="")
     except PolicyEngineError as e:
         return RequestResponse(success=False, message=str(e))
     raise HTTPException(500, "Shouldn't get here")

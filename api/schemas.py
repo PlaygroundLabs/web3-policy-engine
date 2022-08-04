@@ -3,13 +3,13 @@ from pydantic import BaseModel, Field
 
 
 class TransactionObject(BaseModel):
-    _from: str  # DATA, 20 Bytes - The address the transaction is sent from.
-    _to: str  # DATA, 20 Bytes - (optional when creating new contract) The address the transaction is directed to.
-    gas: int | None  # QUANTITY - (optional, default: 90000) Integer of the gas provided for the transaction execution. It will return unused gas.
-    gasPrice: str | None  # QUANTITY - (optional, default: To-Be-Determined) Integer of the gasPrice used for each paid gas, in Wei.
-    value: str | None  # QUANTITY - (optional) Integer of the value sent with this transaction, in Wei.
-    data: str | None  # DATA - The compiled code of a contract OR the hash of the invoked method signature and encoded parameters.
-    nonce: str | None  # QUANTITY - (optional) Integer of a nonce. This allows to overwrite your own pending transactions that use the same nonce.
+    _from: str|None
+    to: str
+    gas: str | None
+    gasPrice: str | None
+    value: str | None
+    data: str
+    nonce: str | None 
 
 
 class JsonRpcRequest(BaseModel):

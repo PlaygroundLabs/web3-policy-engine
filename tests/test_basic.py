@@ -57,7 +57,7 @@ class TestParser(TestCase):
             "0x0000000000000000000000000000000000000000000000000000000000000006"
         )
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+            "0x1234123412341234123412341234123412341234", payload.hex()
         )
 
         res = parser.parse_transaction(transaction)
@@ -90,7 +90,7 @@ class TestParser(TestCase):
             "0x0000000000000000000000000000000000000000000000000000000000000004"
         )
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+            "0x1234123412341234123412341234123412341234", payload.hex()
         )
 
         res = parser.parse_transaction(transaction)
@@ -112,7 +112,7 @@ class TestParser(TestCase):
             "0x0000000000000000000000000000000000000000000000000000000000000001"
         )
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+            "0x1234123412341234123412341234123412341234", payload.hex()
         )
         self.assertRaises(ParseError, parser.parse_transaction, transaction)
 
@@ -129,7 +129,7 @@ class TestParser(TestCase):
             "0x0000000000000000000000000000000000000000000000000000000000000006"
         )
         transaction = InputTransaction(
-            HexBytes("0x2222222222222222222222222222222222222222"), HexBytes(payload)
+            "0x2222222222222222222222222222222222222222", payload.hex()
         )
 
         self.assertRaises(ParseError, parser.parse_transaction, transaction)
@@ -142,10 +142,8 @@ class TestParser(TestCase):
         )
 
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"),
-            HexBytes(
-                "0x343434340000000000000000000000000000000000000000000000000000000000000006"
-            ),
+            "0x1234123412341234123412341234123412341234",
+            "0x343434340000000000000000000000000000000000000000000000000000000000000006",
         )
         self.assertRaises(ValueError, parser.parse_transaction, transaction)
 
@@ -158,7 +156,7 @@ class TestParser(TestCase):
 
         payload = method_signature(contract.functions.testmethod1)
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), payload
+            ("0x1234123412341234123412341234123412341234"), payload.hex()
         )
         self.assertRaises(ParseError, parser.parse_transaction, transaction)
 
@@ -171,7 +169,7 @@ class TestParser(TestCase):
 
         original_message = "testmessage"
         parsed_message = parser.parse_message(
-            HexBytes(original_message.encode("ascii"))
+            HexBytes(original_message.encode("ascii")).hex()
         )
         self.assertEqual(original_message, parsed_message)
 

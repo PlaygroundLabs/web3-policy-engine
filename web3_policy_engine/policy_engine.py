@@ -11,7 +11,6 @@ from .contract_common import (
     ArgumentGroup,
 )
 
-from hexbytes import HexBytes
 from typing import Type
 from web3.contract import Contract
 
