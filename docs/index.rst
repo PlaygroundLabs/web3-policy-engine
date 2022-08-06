@@ -7,14 +7,6 @@ Welcome to Web3 Policy Engine's documentation!
 ==============================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
 
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   Home <self>
+   usage
