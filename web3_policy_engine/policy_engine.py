@@ -44,7 +44,7 @@ class PolicyEngine:
         self, eth_method: str, to: str, data: str, roles: list[str]
     ) -> bool:
         """
-        Parse the raw transaction, and then verify that the specified roles grant
+        Parse raw transaction, and then verify that the specified roles grant
         permission to execute it.
         """
         transaction = InputTransaction(HexBytes(to), HexBytes(data))
@@ -54,7 +54,7 @@ class PolicyEngine:
 
     def verify_message(self, eth_method: str, message: str, roles: list[str]) -> bool:
         """
-        Parse the message, and then verify that the specified roles grant permission
+        Parse message, and then verify that the specified roles grant permission
         to sign it
         """
         parsed_message = self.parser.parse_message(HexBytes(message))

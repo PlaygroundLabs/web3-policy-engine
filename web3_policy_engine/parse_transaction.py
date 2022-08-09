@@ -7,11 +7,22 @@ from .contract_common import InputTransaction, ParsedTransaction
 class Parser:
     """Parser for extracting data from a raw transaction"""
 
-    def __init__(self, contracts: dict[bytes, Type[Contract]]):
+    def __init__(self, contracts: dict[bytes, Type[Contract]]) -> None:
+        """
+        Instantiate a parser.
+
+        :param contracts: dictionary mapping contract deployment addresses to loaded ABI information
+        :type contracts: dict[bytes, Type[Contract]]
+        """
         self.contracts = contracts
 
     def parse_transaction(self, transaction: InputTransaction) -> ParsedTransaction:
-        """Parse transaction, extracting a list of inputs (as correct types)"""
+        """
+        Parse transaction, extracting a list of inputs (as correct types)
+
+        :param transaction: input transaction to parse
+        :type transaction: InputTransaction
+        """
         if transaction.to not in self.contracts:
             raise ValueError("not in list of known contracts")
 
