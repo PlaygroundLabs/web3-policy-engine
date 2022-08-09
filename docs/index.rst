@@ -10,3 +10,4 @@ Welcome to Web3 Policy Engine's documentation!
 
    Home <self>
    usage
+   configuration

@@ -71,15 +71,28 @@ class MessageRequest(Request):
 
 class ArgumentGroup:
     """
-    Argument group, typically used for lists of users in a particular category.
-    TODO: consider integrating this with SQLAlchemy for easier database access
+    Set of smart contract arguments grouped together into one ArgumentGroup. Used for large and/or frequently altered lists of arguments which should be associated with the
+    same permissions.
     """
 
-    def __init__(self, members: list[ArgValue]):
+    def __init__(self, members: list[ArgValue]) -> None:
+        """
+        Basic initializer, which stores a list of items in the group
+        :param members: list of recognized values in this group
+        :type members: list[ArgValue]
+        """
         self.members = members
 
-    def contains(self, member: ArgValue) -> bool:
-        return member in self.members
+    def contains(self, item: ArgValue) -> bool:
+        """
+        Check if specified item is in this group or not.
+
+        :param item: item to check
+        :type item: ArgValue
+        :returns: *true* if this group contains item, else *false*
+        :rtype: bool
+        """
+        return item in self.members
 
 
 class InvalidPermissionsError(Exception):

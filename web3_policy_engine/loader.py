@@ -54,6 +54,31 @@ def method_signature(method: ContractFunction) -> HexBytes:
 def contract_addresses_from_json(
     filename: str,
 ) -> tuple[dict[str, Type[Contract]], dict[bytes, Type[Contract]]]:
+    """
+    Load contract ABIs and registered deployment addresses.
+
+    :param filename: JSON file containing ABI filenames and addresses for each contract type (see below).
+    :returns:
+
+        1. dictionary mapping contract names to ABI information
+        2. dictionary mapping deployment addresses to ABI information
+
+    :rtype: tuple[dict[str, Type[Contract]], dict[bytes, Type[Contract]]]
+
+    Input JSON files must contain two variables: contract_names, and addresses. The format is as follows:
+
+    .. code-block:: json
+
+        {
+            "contract_names" : {
+                "contract" : "path/to/ABI.json"
+            },
+            "addresses" : {
+                "0x1234123412341234123412341234123412341234": "contract_name",
+            }
+        }
+    """
+
     with open(filename) as file_handle:
         data = json.load(file_handle)
         contracts = {
@@ -68,6 +93,24 @@ def contract_addresses_from_json(
 
 
 def argument_groups_from_yaml(filename: str) -> dict[str, ArgumentGroup]:
+    """
+    Load an argument group from a yaml file.
+
+    :param filename: yaml file
+    :type filename: str
+    :returns: dictionary mapping group names to groups
+    :rtype: dict[str, ArgumentGroup]
+
+    Expected format of file is:
+
+    .. code-block:: yaml
+
+        group_name:
+            - item_1
+            - item_2
+
+
+    """
     with open(filename) as file_handle:
         data = yaml.safe_load(file_handle)
         return {
