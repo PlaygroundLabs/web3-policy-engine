@@ -47,7 +47,7 @@ class PolicyEngine:
         permission to execute it.
         """
         transaction = InputTransaction(to, data)
-        parsed_transaction = self.parser.parse_transaction(transaction)
+        parsed_transaction = self.parser.input_transaction_to_parsed_transaction(transaction)
         request = TransactionRequest(parsed_transaction, eth_method, roles)
         return self.verifier.verify(request)
 

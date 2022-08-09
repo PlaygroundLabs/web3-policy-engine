@@ -43,6 +43,37 @@ class TestContract(TestCase):
 
 
 class TestParser(TestCase):
+    def test_transaction_from_jsonrpc(self):
+        """Test converting a json rpc request to an InputTransaction"""
+        parser = Parser({})
+        to = "0xa2a13ce1824f3916fc84c65e559391fc6674e6e8"
+        data = "0x93e3953900000000000000000000000000000000000000000000000000000000"
+        json_rpc = {
+            "jsonrpc": "2.0",
+            "id": 77,
+            "method": "eth_sendTransaction",
+            "params": [
+                {
+                    "from": "0x573dd41c9e904f908d14f7150438bc7dc210baa9",
+                    "data": data,
+                    "gasPrice": "0x70657586c",
+                    "to": to,
+                }
+            ],
+        }
+        input_transaction = parser.json_rpc_to_transaction(json_rpc)
+        self.assertEqual(input_transaction.to, to)
+        self.assertEqual(input_transaction.data, data)
+
+    def test_transaction_from_bad_jsonrpc(self):
+        """Make sure that an error is raised if a transaction is built from a bad json rpc"""
+        parser = Parser({})
+        self.assertRaises(ParseError, parser.json_rpc_to_transaction, {})
+        self.assertRaises(ParseError, parser.json_rpc_to_transaction, {"params": []})
+        self.assertRaises(ParseError, parser.json_rpc_to_transaction, {"params": [{"to": "0x0"}]})
+        self.assertRaises(ParseError, parser.json_rpc_to_transaction, {"params": [{"data": "0x0"}]})
+
+
     def test_transaction_basic(self):
         """Test parsing a transaction for a simple contract method with one input"""
         contract = make_basic_contract()
@@ -59,7 +90,7 @@ class TestParser(TestCase):
             "0x1234123412341234123412341234123412341234", payload.hex()
         )
 
-        res = parser.parse_transaction(transaction)
+        res = parser.input_transaction_to_parsed_transaction(transaction)
         self.assertEqual(res.contractType, contract)
         self.assertEqual(res.method.fn_name, "testmethod1")
         self.assertEqual(len(res.args.keys()), 1)
@@ -92,7 +123,7 @@ class TestParser(TestCase):
             "0x1234123412341234123412341234123412341234", payload.hex()
         )
 
-        res = parser.parse_transaction(transaction)
+        res = parser.input_transaction_to_parsed_transaction(transaction)
         self.assertEqual(res.contractType, contract)
         self.assertEqual(res.method.fn_name, "testmethod1")
         self.assertEqual(len(res.args.keys()), 4)
@@ -113,7 +144,9 @@ class TestParser(TestCase):
         transaction = InputTransaction(
             "0x1234123412341234123412341234123412341234", payload.hex()
         )
-        self.assertRaises(ParseError, parser.parse_transaction, transaction)
+        self.assertRaises(
+            ParseError, parser.input_transaction_to_parsed_transaction, transaction
+        )
 
     def test_transaction_invalid_contract(self):
         """Test parsing a transaction for an unrecognized contract"""
@@ -131,7 +164,9 @@ class TestParser(TestCase):
             "0x2222222222222222222222222222222222222222", payload.hex()
         )
 
-        self.assertRaises(ParseError, parser.parse_transaction, transaction)
+        self.assertRaises(
+            ParseError, parser.input_transaction_to_parsed_transaction, transaction
+        )
 
     def test_transaction_invalid_method_name(self):
         """Test that the parser fails when given a method name which doesn't exist"""
@@ -144,7 +179,9 @@ class TestParser(TestCase):
             "0x1234123412341234123412341234123412341234",
             "0x343434340000000000000000000000000000000000000000000000000000000000000006",
         )
-        self.assertRaises(ValueError, parser.parse_transaction, transaction)
+        self.assertRaises(
+            ValueError, parser.input_transaction_to_parsed_transaction, transaction
+        )
 
     def test_transaction_no_method_args(self):
         """Test that the parser fails when no arguments are specified"""
@@ -157,7 +194,9 @@ class TestParser(TestCase):
         transaction = InputTransaction(
             ("0x1234123412341234123412341234123412341234"), payload.hex()
         )
-        self.assertRaises(ParseError, parser.parse_transaction, transaction)
+        self.assertRaises(
+            ParseError, parser.input_transaction_to_parsed_transaction, transaction
+        )
 
     def test_message_basic(self):
         """Test basic functionality of parse_message"""
