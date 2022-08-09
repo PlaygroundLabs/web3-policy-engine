@@ -172,7 +172,7 @@ class AllowedEthMessageMethod(AllowedEthMethod):
             return True
 
         raise InvalidPermissionsError(
-            f"message {request.message} not allowed for any role."
+            f"message '{request.message}' not allowed for any role."
         )
 
     def verify(self, request: Request) -> bool:

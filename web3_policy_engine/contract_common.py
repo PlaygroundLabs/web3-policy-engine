@@ -13,12 +13,12 @@ class InputTransaction:
     Defines all of the required information for transaction inputs to policy engine
     """
 
-    def __init__(self, to: bytes, data: bytes):
+    def __init__(self, to: str, data: str):
         self.to = to
         self.data = data
 
 
-class ParsedTransaction(InputTransaction):
+class ParsedTransaction:
     """
     Everything that should be in a parsed transaction
     """
@@ -31,7 +31,8 @@ class ParsedTransaction(InputTransaction):
         method: ContractFunction,
         args: dict[str, ArgValue],
     ):
-        super().__init__(to, data)
+        self.to = to
+        self.data = data
         self.contractType = contractType
         self.method = method
         self.args = args
@@ -95,9 +96,15 @@ class ArgumentGroup:
         return item in self.members
 
 
-class InvalidPermissionsError(Exception):
+class PolicyEngineError(Exception):
+    """Exception raised while verifying requests"""
+
+class ParseError(PolicyEngineError):
+    """Exception raised during parsing"""
+
+class InvalidPermissionsError(PolicyEngineError):
     """Exception raised when the user doesn't have the required permissions"""
 
 
-class UnrecognizedRequestError(Exception):
+class UnrecognizedRequestError(PolicyEngineError):
     """Exception raised when request has an unrecognized method, contract type, etc."""

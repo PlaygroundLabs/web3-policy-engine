@@ -3,7 +3,6 @@ from unittest import TestCase
 from hexbytes import HexBytes
 from web3.auto import w3
 from web3.contract import Contract
-from eth_abi.exceptions import InsufficientDataBytes
 
 from web3_policy_engine.contract_common import (
     ArgValue,
@@ -13,6 +12,7 @@ from web3_policy_engine.contract_common import (
     Request,
     TransactionRequest,
     ArgumentGroup,
+    ParseError,
     InvalidPermissionsError,
     UnrecognizedRequestError,
 )
@@ -56,7 +56,7 @@ class TestParser(TestCase):
             "0x0000000000000000000000000000000000000000000000000000000000000006"
         )
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+            "0x1234123412341234123412341234123412341234", payload.hex()
         )
 
         res = parser.parse_transaction(transaction)
@@ -89,7 +89,7 @@ class TestParser(TestCase):
             "0x0000000000000000000000000000000000000000000000000000000000000004"
         )
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+            "0x1234123412341234123412341234123412341234", payload.hex()
         )
 
         res = parser.parse_transaction(transaction)
@@ -111,9 +111,9 @@ class TestParser(TestCase):
             "0x0000000000000000000000000000000000000000000000000000000000000001"
         )
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), HexBytes(payload)
+            "0x1234123412341234123412341234123412341234", payload.hex()
         )
-        self.assertRaises(InsufficientDataBytes, parser.parse_transaction, transaction)
+        self.assertRaises(ParseError, parser.parse_transaction, transaction)
 
     def test_transaction_invalid_contract(self):
         """Test parsing a transaction for an unrecognized contract"""
@@ -128,10 +128,10 @@ class TestParser(TestCase):
             "0x0000000000000000000000000000000000000000000000000000000000000006"
         )
         transaction = InputTransaction(
-            HexBytes("0x2222222222222222222222222222222222222222"), HexBytes(payload)
+            "0x2222222222222222222222222222222222222222", payload.hex()
         )
 
-        self.assertRaises(ValueError, parser.parse_transaction, transaction)
+        self.assertRaises(ParseError, parser.parse_transaction, transaction)
 
     def test_transaction_invalid_method_name(self):
         """Test that the parser fails when given a method name which doesn't exist"""
@@ -141,10 +141,8 @@ class TestParser(TestCase):
         )
 
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"),
-            HexBytes(
-                "0x343434340000000000000000000000000000000000000000000000000000000000000006"
-            ),
+            "0x1234123412341234123412341234123412341234",
+            "0x343434340000000000000000000000000000000000000000000000000000000000000006",
         )
         self.assertRaises(ValueError, parser.parse_transaction, transaction)
 
@@ -157,9 +155,9 @@ class TestParser(TestCase):
 
         payload = method_signature(contract.functions.testmethod1)
         transaction = InputTransaction(
-            HexBytes("0x1234123412341234123412341234123412341234"), payload
+            ("0x1234123412341234123412341234123412341234"), payload.hex()
         )
-        self.assertRaises(InsufficientDataBytes, parser.parse_transaction, transaction)
+        self.assertRaises(ParseError, parser.parse_transaction, transaction)
 
     def test_message_basic(self):
         """Test basic functionality of parse_message"""
@@ -170,7 +168,7 @@ class TestParser(TestCase):
 
         original_message = "testmessage"
         parsed_message = parser.parse_message(
-            HexBytes(original_message.encode("ascii"))
+            HexBytes(original_message.encode("ascii")).hex()
         )
         self.assertEqual(original_message, parsed_message)
 
@@ -347,71 +345,6 @@ class TestVerify(TestCase):
         )
         request = TransactionRequest(transaction, "eth_sendTransaction", ["testRole1"])
         self.assertRaises(InvalidPermissionsError, allowed_method.verify, request)
-
-    # def test_method_multiple_roles(self):
-    #     """Test various combinations of roles with slightly different permissions on the same method"""
-    #     allowed_arg1a = AllowedValue(1, ["testRole1"])
-    #     allowed_arg1b = AllowedValue(2, ["testRole1"])
-    #     allowed_arg2 = AllowedValue(10, ["testRole2"])
-    #     allowed_method = AllowedContractMethod({"_arg1": [allowed_arg1a, allowed_arg1b], "_arg2": [allowed_arg2]})
-
-    #     contract = make_contract_multple_args(["uint256", "uint256"])
-
-    #     # valid transaction, one good role
-    #     transaction = ParsedTransaction(
-    #         HexBytes("0x1234123412341234123412341234123412341234"),
-    #         HexBytes("0x0"),
-    #         contract,
-    #         contract.functions.testmethod1,
-    #         {
-    #             "_arg1": 1,
-    #             "_arg2": 1,
-    #         },
-    #     )
-    #     request = TransactionRequest(transaction, "eth_sendTransaction", ["testRole1"])
-    #     self.assertTrue(allowed_method.verify(request))
-
-    #     # valid transaction, one bad role and one good one
-    #     transaction = ParsedTransaction(
-    #         HexBytes("0x1234123412341234123412341234123412341234"),
-    #         HexBytes("0x0"),
-    #         contract,
-    #         contract.functions.testmethod1,
-    #         {
-    #             "_arg1": 10,
-    #             "_arg2": 10,
-    #         },
-    #     )
-    #     request = TransactionRequest(transaction, "eth_sendTransaction", ["testRole1", "testRole2"])
-    #     self.assertTrue(allowed_method.verify(request))
-
-    #     # invalid transaction, two bad roles
-    #     transaction = ParsedTransaction(
-    #         HexBytes("0x1234123412341234123412341234123412341234"),
-    #         HexBytes("0x0"),
-    #         contract,
-    #         contract.functions.testmethod1,
-    #         {
-    #             "_arg1": -1,
-    #             "_arg2": 10,
-    #         },
-    #     )
-    #     request = TransactionRequest(transaction, "eth_sendTransaction", ["testRole1"])
-    #     self.assertRaises(InvalidPermissionsError, allowed_method.verify, request)
-
-    #     # valid transaction, _arg1=1 allowed by testRole1, and _arg1=10 allowed by testRole2
-    #     transaction = ParsedTransaction(
-    #         HexBytes("0x1234123412341234123412341234123412341234"),
-    #         HexBytes("0x0"),
-    #         contract,
-    #         contract.functions.testmethod1,
-    #         {
-    #             "_arg1": 1,
-    #             "_arg2": 10,
-    #         },
-    #     )
-    #     request = TransactionRequest(transaction, "eth_sendTransaction", ["testRole1", "testRole2"])
-    #     self.assertTrue(allowed_method.verify(request))
 
     def test_contract(self):
         """Test basic functionality of AllowedContract"""

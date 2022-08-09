@@ -11,7 +11,6 @@ from .contract_common import (
     ArgumentGroup,
 )
 
-from hexbytes import HexBytes
 from typing import Type
 from web3.contract import Contract
 
@@ -47,7 +46,7 @@ class PolicyEngine:
         Parse raw transaction, and then verify that the specified roles grant
         permission to execute it.
         """
-        transaction = InputTransaction(HexBytes(to), HexBytes(data))
+        transaction = InputTransaction(to, data)
         parsed_transaction = self.parser.parse_transaction(transaction)
         request = TransactionRequest(parsed_transaction, eth_method, roles)
         return self.verifier.verify(request)
@@ -57,6 +56,6 @@ class PolicyEngine:
         Parse message, and then verify that the specified roles grant permission
         to sign it
         """
-        parsed_message = self.parser.parse_message(HexBytes(message))
+        parsed_message = self.parser.parse_message(message)
         request = MessageRequest(parsed_message, eth_method, roles)
         return self.verifier.verify(request)
