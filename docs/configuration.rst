@@ -127,4 +127,4 @@ Additionally, all deployments of smart contracts must be registered, so that the
 
 The provided function to load this information from a file is contract_addresses_from_json:
 
-.. automethod:: web3_policy_engine.loader.contract_addresses_from_json
+.. autofunction:: web3_policy_engine.loader.contract_addresses_from_json
