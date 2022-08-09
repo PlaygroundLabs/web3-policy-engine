@@ -6,6 +6,11 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+import os
+import sys
+# add main directory to path so that readthedocs can find main module
+sys.path.append(os.path.abspath('..'))
+
 project = "Web3 Policy Engine"
 copyright = "2022, Daniel Neshyba-Rowe"
 author = "Daniel Neshyba-Rowe"
