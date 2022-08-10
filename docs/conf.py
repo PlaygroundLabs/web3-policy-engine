@@ -8,8 +8,9 @@
 
 import os
 import sys
+
 # add main directory to path so that readthedocs can find main module
-sys.path.append(os.path.abspath('..'))
+sys.path.append(os.path.abspath(".."))
 
 project = "Web3 Policy Engine"
 copyright = "2022, Daniel Neshyba-Rowe"
