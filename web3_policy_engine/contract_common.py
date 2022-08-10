@@ -1,10 +1,10 @@
 from abc import ABC
 from web3.contract import Contract, ContractFunction
-from typing import Any, Type
+from typing import Any, Dict, List, Type
 
 
 # typedefs for commonly used things
-Roles = list[str]
+Roles = List[str]
 ArgValue = Any
 
 
@@ -29,7 +29,7 @@ class ParsedTransaction(InputTransaction):
         data: bytes,
         contractType: Type[Contract],
         method: ContractFunction,
-        args: dict[str, ArgValue],
+        args: Dict[str, ArgValue],
     ):
         super().__init__(to, data)
         self.contractType = contractType
@@ -53,7 +53,7 @@ class TransactionRequest(Request):
     """
 
     def __init__(
-        self, transaction: ParsedTransaction, eth_method: str, roles: list[str]
+        self, transaction: ParsedTransaction, eth_method: str, roles: List[str]
     ) -> None:
         self.transaction = transaction
         super().__init__(eth_method, roles)
@@ -64,7 +64,7 @@ class MessageRequest(Request):
     Wrapper for message requests, as used in sign or personal_sign
     """
 
-    def __init__(self, message: str, eth_method: str, roles: list[str]) -> None:
+    def __init__(self, message: str, eth_method: str, roles: List[str]) -> None:
         self.message = message
         super().__init__(eth_method, roles)
 
@@ -75,7 +75,7 @@ class ArgumentGroup:
     same permissions.
     """
 
-    def __init__(self, members: list[ArgValue]) -> None:
+    def __init__(self, members: List[ArgValue]) -> None:
         """
         Basic initializer, which stores a list of items in the group
         :param members: list of recognized values in this group

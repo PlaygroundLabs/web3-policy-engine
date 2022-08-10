@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Dict, Type
 from web3.contract import Contract
 
 from .contract_common import InputTransaction, ParsedTransaction
@@ -7,7 +7,7 @@ from .contract_common import InputTransaction, ParsedTransaction
 class Parser:
     """Parser for extracting data from a raw transaction"""
 
-    def __init__(self, contracts: dict[bytes, Type[Contract]]) -> None:
+    def __init__(self, contracts: Dict[bytes, Type[Contract]]) -> None:
         """
         Instantiate a parser.
 

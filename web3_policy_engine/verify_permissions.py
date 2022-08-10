@@ -1,4 +1,4 @@
-from typing import Any, Type
+from typing import Any, Dict, List, Type
 from web3.contract import Contract
 
 from web3_policy_engine.contract_common import (
@@ -47,7 +47,7 @@ class AllowedGroup(AllowedOption):
 class AllowedContractMethod:
     """Low-level verifier for contract methods"""
 
-    def __init__(self, allowed_args: dict[str, list[AllowedOption]]) -> None:
+    def __init__(self, allowed_args: Dict[str, List[AllowedOption]]) -> None:
         self.allowed_args = allowed_args
 
     def verify_arg(self, arg_name: str, arg_value: ArgValue, user_roles: Roles) -> bool:
@@ -78,7 +78,7 @@ class AllowedContract:
     def __init__(
         self,
         contract_type: Type[Contract],
-        allowed_methods: dict[str, AllowedContractMethod],
+        allowed_methods: Dict[str, AllowedContractMethod],
     ) -> None:
         self.contract_type = contract_type
         self.allowed_methods = allowed_methods
@@ -123,7 +123,7 @@ class AllowedEthMethod:
 class AllowedEthContractMethod(AllowedEthMethod):
     def __init__(
         self,
-        allowed_contracts: list[AllowedContract],
+        allowed_contracts: List[AllowedContract],
     ) -> None:
         self.allowed_contracts = allowed_contracts
 
@@ -155,7 +155,7 @@ class AllowedEthContractMethod(AllowedEthMethod):
 class AllowedEthMessageMethod(AllowedEthMethod):
     def __init__(
         self,
-        allowed_messages: list[AllowedOption],
+        allowed_messages: List[AllowedOption],
     ) -> None:
         self.allowed_messages = allowed_messages
 
@@ -189,7 +189,7 @@ class Verifier:
     and decides if the user has the required permissions.
     """
 
-    def __init__(self, allowed_eth_methods: dict[str, AllowedEthMethod]) -> None:
+    def __init__(self, allowed_eth_methods: Dict[str, AllowedEthMethod]) -> None:
         self.allowed_eth_methods = allowed_eth_methods
 
     def verify(self, request: Request) -> bool:

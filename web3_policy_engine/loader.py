@@ -13,7 +13,7 @@ from .verify_permissions import (
     Roles,
 )
 
-from typing import Type
+from typing import Dict, Tuple, Type
 import json
 import yaml
 from hexbytes import HexBytes
@@ -53,7 +53,7 @@ def method_signature(method: ContractFunction) -> HexBytes:
 
 def contract_addresses_from_json(
     filename: str,
-) -> tuple[dict[str, Type[Contract]], dict[bytes, Type[Contract]]]:
+) -> Tuple[Dict[str, Type[Contract]], Dict[bytes, Type[Contract]]]:
     """
     Load contract ABIs and registered deployment addresses.
 
@@ -92,7 +92,7 @@ def contract_addresses_from_json(
         return contracts, addresses
 
 
-def argument_groups_from_yaml(filename: str) -> dict[str, ArgumentGroup]:
+def argument_groups_from_yaml(filename: str) -> Dict[str, ArgumentGroup]:
     """
     Load an argument group from a yaml file.
 
@@ -119,7 +119,7 @@ def argument_groups_from_yaml(filename: str) -> dict[str, ArgumentGroup]:
 
 
 def get_allowed_option(
-    option: ArgValue | str, groups: dict[str, ArgumentGroup], roles: Roles
+    option: ArgValue | str, groups: Dict[str, ArgumentGroup], roles: Roles
 ) -> AllowedOption:
     """
     Helper function for permissions_from_dict.
@@ -132,9 +132,9 @@ def get_allowed_option(
 
 
 def allowed_contracts_from_dict(
-    transaction_data: dict[str, dict[str, dict[str, dict[ArgValue, Roles]]]],
-    contracts: dict[str, Type[Contract]],
-    groups: dict[str, ArgumentGroup] = {},
+    transaction_data: Dict[str, Dict[str, Dict[str, Dict[ArgValue, Roles]]]],
+    contracts: Dict[str, Type[Contract]],
+    groups: Dict[str, ArgumentGroup] = {},
 ) -> AllowedEthContractMethod:
     """
     Load in the allowed contracts from a dictionary
@@ -169,7 +169,7 @@ def allowed_contracts_from_dict(
 
 
 def allowed_messages_from_dict(
-    message_data: dict[str, Roles], groups: dict[str, ArgumentGroup] = {}
+    message_data: Dict[str, Roles], groups: Dict[str, ArgumentGroup] = {}
 ) -> AllowedEthMessageMethod:
     allowed_messages = [
         get_allowed_option(option, groups, roles)
@@ -181,8 +181,8 @@ def allowed_messages_from_dict(
 
 def permissions_from_yaml(
     filename: str,
-    contracts: dict[str, Type[Contract]],
-    groups: dict[str, ArgumentGroup] = {},
+    contracts: Dict[str, Type[Contract]],
+    groups: Dict[str, ArgumentGroup] = {},
 ) -> Verifier:
     """Load a Verifier object from a yaml file"""
     with open(filename, "r") as file_handle:
@@ -209,7 +209,7 @@ def permissions_from_yaml(
 
         # explicitly declaring the type, because allowed_eth_methods
         # can hold both AllowedEthContractMethod and AllowedEthMessageMethod
-        allowed_eth_methods : dict[str, AllowedEthMethod] = {}
+        allowed_eth_methods: Dict[str, AllowedEthMethod] = {}
         for eth_method_name in transaction_methods:
             allowed_eth_methods[eth_method_name] = allowed_contracts
         for eth_method_name in message_methods:

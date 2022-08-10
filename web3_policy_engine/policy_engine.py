@@ -12,7 +12,7 @@ from .contract_common import (
 )
 
 from hexbytes import HexBytes
-from typing import Type
+from typing import Dict, List, Type
 from web3.contract import Contract
 
 
@@ -24,9 +24,9 @@ class PolicyEngine:
 
     def __init__(
         self,
-        contracts: dict[str, Type[Contract]],
-        addresses: dict[bytes, Type[Contract]],
-        groups: dict[str, ArgumentGroup],
+        contracts: Dict[str, Type[Contract]],
+        addresses: Dict[bytes, Type[Contract]],
+        groups: Dict[str, ArgumentGroup],
         permissions_config: str,
     ) -> None:
         self.parser = Parser(addresses)
@@ -41,7 +41,7 @@ class PolicyEngine:
         return cls(contracts, addresses, groups, permissions_config)
 
     def verify_transaction(
-        self, eth_method: str, to: str, data: str, roles: list[str]
+        self, eth_method: str, to: str, data: str, roles: List[str]
     ) -> bool:
         """
         Parse raw transaction, and then verify that the specified roles grant
@@ -52,7 +52,7 @@ class PolicyEngine:
         request = TransactionRequest(parsed_transaction, eth_method, roles)
         return self.verifier.verify(request)
 
-    def verify_message(self, eth_method: str, message: str, roles: list[str]) -> bool:
+    def verify_message(self, eth_method: str, message: str, roles: List[str]) -> bool:
         """
         Parse message, and then verify that the specified roles grant permission
         to sign it
