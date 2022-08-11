@@ -2,15 +2,33 @@ from typing import Any, Type
 from web3.contract import Contract
 
 from web3_policy_engine.contract_common import (
-    MessageRequest,
+    ParsedMessage,
+    ParsedTransaction,
     Request,
-    TransactionRequest,
     InvalidPermissionsError,
     UnrecognizedRequestError,
     ArgumentGroup,
     Roles,
     ArgValue,
 )
+
+
+def get_transaction_json_rpc(request: Request) -> ParsedTransaction:
+    json_rpc = request.json_rpc
+    if not isinstance(json_rpc, ParsedTransaction):
+        raise UnrecognizedRequestError(
+            "Expected an eth method which attempts to interact with a contract"
+        )
+    return json_rpc
+
+
+def get_message_json_rpc(request: Request) -> ParsedMessage:
+    json_rpc = request.json_rpc
+    if not isinstance(json_rpc, ParsedMessage):
+        raise UnrecognizedRequestError(
+            "Expected an eth method which attempts to sign a message"
+        )
+    return json_rpc
 
 
 class AllowedOption:
@@ -59,10 +77,13 @@ class AllowedContractMethod:
         # if any allowed args are ok with the value, then it's good
         return any(result)
 
-    def verify(self, request: TransactionRequest) -> bool:
+    def verify(self, request: Request) -> bool:
         """Check if all arguments are allowed by at least one role the user has"""
 
-        for arg_name, arg_value in request.transaction.args.items():
+        json_rpc = get_transaction_json_rpc(request)
+
+        args = json_rpc.contract_method_args
+        for arg_name, arg_value in args.items():
             allowed = self.verify_arg(arg_name, arg_value, request.roles)
 
             if not allowed:
@@ -83,19 +104,21 @@ class AllowedContract:
         self.contract_type = contract_type
         self.allowed_methods = allowed_methods
 
-    def get_method(self, request: TransactionRequest) -> AllowedContractMethod:
+    def get_method(self, request: Request) -> AllowedContractMethod:
         """
         Get AllowedMethod object for the method specified in request.transaction
         """
-        if request.transaction.method.fn_name in self.allowed_methods:
-            return self.allowed_methods[request.transaction.method.fn_name]
+        json_rpc = get_transaction_json_rpc(request)
+        method = json_rpc.contract_method.fn_name
+        if method in self.allowed_methods:
+            return self.allowed_methods[method]
         raise UnrecognizedRequestError("Method not found")
 
     def has_type(self, contract_type: Type[Contract]) -> bool:
         """Check if this object is associated with the specified contract type"""
         return contract_type == self.contract_type
 
-    def verify(self, request: TransactionRequest) -> bool:
+    def verify(self, request: Request) -> bool:
         """Verify that the transaction is valid for this contract"""
         method = self.get_method(request)
         return method.verify(request)
@@ -127,29 +150,25 @@ class AllowedEthContractMethod(AllowedEthMethod):
     ) -> None:
         self.allowed_contracts = allowed_contracts
 
-    def get_contract(self, request: TransactionRequest) -> AllowedContract:
+    def get_contract(self, request: Request) -> AllowedContract:
         """
         Get the corresponding AllowedContract object for the contract type
         the user wants to use
         """
+        json_rpc = get_transaction_json_rpc(request)
+
         for contract in self.allowed_contracts:
-            if contract.has_type(request.transaction.contractType):
+            if contract.has_type(json_rpc.contract_type):
                 return contract
+
         raise UnrecognizedRequestError("Contract type not recognized")
 
-    def verify_transaction_request(self, request: TransactionRequest) -> bool:
+    def verify(self, request: Request) -> bool:
         """
         Verify a transaction (used for eth_signTransaction or eth_sendTransaction)
         """
         contract = self.get_contract(request)
         return contract.verify(request)
-
-    def verify(self, request: Request) -> bool:
-        if not isinstance(request, TransactionRequest):
-            raise UnrecognizedRequestError(
-                "Expected an eth method which attempts to interact with a contract"
-            )
-        return self.verify_transaction_request(request)
 
 
 class AllowedEthMessageMethod(AllowedEthMethod):
@@ -159,28 +178,24 @@ class AllowedEthMessageMethod(AllowedEthMethod):
     ) -> None:
         self.allowed_messages = allowed_messages
 
-    def verify_message_request(self, request: MessageRequest) -> bool:
+    def get_message(self, request: Request) -> str:
+        json_rpc = get_message_json_rpc(request)
+        return json_rpc.message
+
+    def verify(self, request: Request) -> bool:
         """
         Verify a message (used for eth_sign or personal_sign)
         """
+        message = self.get_message(request)
         allowed_message_results = [
-            message.verify(request.message, request.roles)
-            for message in self.allowed_messages
+            allowed_message.verify(message, request.roles)
+            for allowed_message in self.allowed_messages
         ]
 
         if any(allowed_message_results):
             return True
 
-        raise InvalidPermissionsError(
-            f"message {request.message} not allowed for any role."
-        )
-
-    def verify(self, request: Request) -> bool:
-        if not isinstance(request, MessageRequest):
-            raise UnrecognizedRequestError(
-                "Expected an eth method which takes a message as input"
-            )
-        return self.verify_message_request(request)
+        raise InvalidPermissionsError(f"message '{message}' not allowed for any role.")
 
 
 class Verifier:
@@ -196,6 +211,7 @@ class Verifier:
         """
         Verify a user request
         """
-        if request.eth_method not in self.allowed_eth_methods:
+        method = request.json_rpc.eth_method
+        if method not in self.allowed_eth_methods:
             raise UnrecognizedRequestError("eth method not recognized")
-        return self.allowed_eth_methods[request.eth_method].verify(request)
+        return self.allowed_eth_methods[method].verify(request)
