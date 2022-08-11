@@ -1,3 +1,9 @@
+"""
+Define commonly used types, objects, and exceptions.
+This file should be the lowest level in the import heirarchy
+(i.e. no other files from this package should be imported here.
+"""
+
 from web3.contract import Contract, ContractFunction
 from typing import Any, Type
 from dataclasses import dataclass
@@ -87,33 +93,19 @@ class Request:
     roles: Roles
 
 
-# class MessageRequest(Request):
-#     """
-#     Request class for message-style JSON RPC calls
-#     """
-
-#     json_rpc: ParsedMessage
-
-
-# class TransactionRequest(Request):
-#     """
-#     Request class for message-style JSON RPC calls
-#     """
-
-#     json_rpc: ParsedTransaction
-
-
 class ArgumentGroup:
     """
-    Set of smart contract arguments grouped together into one ArgumentGroup. Used for large and/or frequently altered lists of arguments which should be associated with the
-    same permissions.
+    Set of smart contract arguments grouped together into one ArgumentGroup.
+    Used for large and/or frequently altered lists of arguments which
+    should be associated with the same permissions.
     """
 
     def __init__(self, members: list[ArgValue]) -> None:
         """
         Basic initializer, which stores a list of items in the group
-        :param members: list of recognized values in this group
-        :type members: list[ArgValue]
+
+        Args:
+            members: list of recognized values in the group
         """
         self.members = members
 
@@ -121,25 +113,35 @@ class ArgumentGroup:
         """
         Check if specified item is in this group or not.
 
-        :param item: item to check
-        :type item: ArgValue
-        :returns: *true* if this group contains item, else *false*
-        :rtype: bool
+        Args:
+            item: item to check
+
+        Returns:
+            True if this group contains *item*, else False
         """
         return item in self.members
 
 
 class PolicyEngineError(Exception):
-    """Exception raised while verifying requests"""
+    """
+    Base exception raised while verifying requests.
+    Should not be used directly, but instead be inherited from by several subclasses
+    """
 
 
 class ParseError(PolicyEngineError):
-    """Exception raised during parsing"""
+    """
+    Exception raised during parsing
+    """
 
 
 class InvalidPermissionsError(PolicyEngineError):
-    """Exception raised when the user doesn't have the required permissions"""
+    """
+    Exception raised when the user doesn't have the required permissions
+    """
 
 
 class UnrecognizedRequestError(PolicyEngineError):
-    """Exception raised when request has an unrecognized method, contract type, etc."""
+    """
+    Exception raised when request has an unrecognized method, contract type, etc.
+    """

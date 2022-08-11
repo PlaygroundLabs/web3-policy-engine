@@ -41,6 +41,7 @@ class TestParser(TestCase):
         contract_address = HexBytes("0x1234123412341234123412341234123412341234")
         tx_parser = TransactionParser({contract_address: contract})
         parser = Parser({"eth_sendTransaction": tx_parser})
+
         payload = method_signature(contract.functions.testmethod1)
         payload += HexBytes(
             "0x0000000000000000000000000000000000000000000000000000000000000006"

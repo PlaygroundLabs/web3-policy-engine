@@ -22,12 +22,38 @@ from web3.contract import Contract, ContractFunction
 
 
 def contract_from_json(filename: str) -> Type[Contract]:
+    """
+    Load contract object containing ABI information from ABI file.
+
+    Args:
+        filename: path to ABI file (should be in JSON format)
+
+    Returns:
+        contract object
+    """
     with open(filename, "r") as file_handle:
         data = json.load(file_handle)
         return w3.eth.contract(abi=data["abi"])
 
 
 def method_signature(method: ContractFunction) -> HexBytes:
+    """
+    Get the signature of a contract method (this function is mostly
+    useful for testing).
+
+    Given a solidity smart contract method, the signature is obtained
+    from the method's name and arguments. For example:
+    "testmethod1(uint256)" has a signature of "0x6ba4caa9".
+
+    Args:
+        method: contract method to get the signature of. Must contain ABI information.
+
+    Returns:
+        method signature
+
+    Raises:
+        ValueError: If the method does not contain necessary ABI information.
+    """
     if method.contract_abi is None:
         raise ValueError("contract_abi is None")
 
@@ -98,7 +124,7 @@ def argument_groups_from_yaml(filename: str) -> dict[str, ArgumentGroup]:
 
     Args:
         filename: yaml file
-    
+
     Returns:
         dictionary mapping group names to groups
 
@@ -126,6 +152,14 @@ def get_allowed_option(
     Helper function for permissions_from_dict.
     Take a list of argument options as specified in a config file, and
     separates them into options (e.g. "1"), and groups (e.g. "managers")
+
+    Args:
+        option: either a valid value for an AllowedValue, or the name of an ArgumentGroup
+        groups: dictionary of known ArgumentGroups and names
+        roles: list of allowed roles for the resulting AllowedOption
+
+    Return:
+        instance of either an AllowedGroup or an AllowedValue
     """
     if option in groups:
         return AllowedGroup(groups[option], roles)
@@ -138,8 +172,16 @@ def allowed_contracts_from_dict(
     groups: dict[str, ArgumentGroup] = {},
 ) -> AllowedEthContractMethod:
     """
-    Load in the allowed contracts from a dictionary
-    Typically used to load from a config file (e.g. yaml, json)
+    Load in the allowed smart contract transactions from a dictionary.
+    Typically used to load from a config file (e.g. yaml, json).
+
+    Args:
+        transaction_data: permissions configuration for allowed smart contract transactions.
+        contracts: known contracts (ABI information) and names
+        groups: known argument groups and names
+
+    Returns:
+        verifier for contract eth methods
     """
 
     for contract_name in transaction_data:
@@ -172,6 +214,17 @@ def allowed_contracts_from_dict(
 def allowed_messages_from_dict(
     message_data: dict[str, Roles], groups: dict[str, ArgumentGroup] = {}
 ) -> AllowedEthMessageMethod:
+    """
+    Load in the allowed message-signing JSON RPC requests from a dictionary.
+    Typically used to load from a config file (e.g. yaml, json).
+
+    Args:
+        message_data: permissions configuration for allowed messages to sign
+        groups: known argument groups and names
+
+    Returns:
+        verifier for message eth methods
+    """
     allowed_messages = [
         get_allowed_option(option, groups, roles)
         for option, roles in message_data.items()
@@ -185,7 +238,9 @@ def permissions_from_yaml(
     contracts: dict[str, Type[Contract]],
     groups: dict[str, ArgumentGroup] = {},
 ) -> Verifier:
-    """Load a Verifier object from a yaml file"""
+    """
+    Load a Verifier object from a yaml file
+    """
     with open(filename, "r") as file_handle:
         data = yaml.safe_load(file_handle)
 
@@ -223,7 +278,7 @@ def eth_methods_from_yaml(filename: str, endstr: str = "_methods") -> dict[str, 
     """
     Load all recognized eth methods, and what type of parameters they take.
 
-    Arguments:
+    Args:
         filename: file to load methods from
 
     Returns:
