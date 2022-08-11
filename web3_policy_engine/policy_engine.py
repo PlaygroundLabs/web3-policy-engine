@@ -1,15 +1,11 @@
 from .loader import (
-    permissions_from_yaml,
-    contract_addresses_from_json,
     argument_groups_from_yaml,
+    contract_addresses_from_json,
+    eth_methods_from_yaml,
+    permissions_from_yaml,
 )
-from .parse_transaction import Parser
-from .contract_common import (
-    InputTransaction,
-    MessageRequest,
-    TransactionRequest,
-    ArgumentGroup,
-)
+from .parse_transaction import ParamParser, TransactionParser, MessageParser, Parser
+from .contract_common import ArgumentGroup, JSON_RPC, Request
 
 from typing import Type
 from web3.contract import Contract
@@ -23,12 +19,13 @@ class PolicyEngine:
 
     def __init__(
         self,
+        parsers: dict[str, ParamParser],
         contracts: dict[str, Type[Contract]],
         addresses: dict[bytes, Type[Contract]],
         groups: dict[str, ArgumentGroup],
         permissions_config: str,
     ) -> None:
-        self.parser = Parser(addresses)
+        self.parser = Parser(parsers)
         self.verifier = permissions_from_yaml(permissions_config, contracts, groups)
 
     @classmethod
@@ -37,25 +34,21 @@ class PolicyEngine:
     ):
         contracts, addresses = contract_addresses_from_json(contract_addresses)
         groups = argument_groups_from_yaml(argument_groups)
-        return cls(contracts, addresses, groups, permissions_config)
 
-    def verify_transaction(
-        self, eth_method: str, to: str, data: str, roles: list[str]
-    ) -> bool:
-        """
-        Parse raw transaction, and then verify that the specified roles grant
-        permission to execute it.
-        """
-        transaction = InputTransaction(to, data)
-        parsed_transaction = self.parser.input_transaction_to_parsed_transaction(transaction)
-        request = TransactionRequest(parsed_transaction, eth_method, roles)
-        return self.verifier.verify(request)
+        eth_methods = eth_methods_from_yaml(permissions_config)
+        parser_types: dict[str, ParamParser] = {
+            "transaction": TransactionParser(addresses),
+            "message": MessageParser(),
+        }
+        parsers = {
+            method_name: parser_types[method_type]
+            for method_name, method_type in eth_methods.items()
+            if method_type in parser_types
+        }
 
-    def verify_message(self, eth_method: str, message: str, roles: list[str]) -> bool:
-        """
-        Parse message, and then verify that the specified roles grant permission
-        to sign it
-        """
-        parsed_message = self.parser.parse_message(message)
-        request = MessageRequest(parsed_message, eth_method, roles)
+        return cls(parsers, contracts, addresses, groups, permissions_config)
+
+    def verify(self, json_rpc: JSON_RPC, roles: list[str]) -> bool:
+        parsed_transaction = self.parser.parse(json_rpc)
+        request = Request(parsed_transaction, roles)
         return self.verifier.verify(request)

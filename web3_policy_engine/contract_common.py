@@ -1,73 +1,106 @@
-from abc import ABC
 from web3.contract import Contract, ContractFunction
 from typing import Any, Type
+from dataclasses import dataclass
 
 
 # typedefs for commonly used things
 Roles = list[str]
 ArgValue = Any
 
+JSON_RPC = dict[str, Any]
 
-class InputTransaction:
+
+@dataclass
+class InputJsonRpc:
     """
-    Defines all of the required information for transaction inputs to policy engine
-    """
-
-    def __init__(self, to: str, data: str):
-        self.to = to
-        self.data = data
-
-
-class ParsedTransaction:
-    """
-    Everything that should be in a parsed transaction
+    Dataclass storing necessary information from a raw json rpc
     """
 
-    def __init__(
-        self,
-        to: bytes,
-        data: bytes,
-        contractType: Type[Contract],
-        method: ContractFunction,
-        args: dict[str, ArgValue],
-    ):
-        self.to = to
-        self.data = data
-        self.contractType = contractType
-        self.method = method
-        self.args = args
+    method: str
+    params: list[Any]
 
 
-class Request(ABC):
+@dataclass
+class RequiredParams:
+    """
+    Base dataclass for required attributes in a json rpc's "params" field
+    """
+
+
+@dataclass
+class TransactionParams(RequiredParams):
+    """
+    Required parameters in a transaction-style json rpc request
+    """
+
+    to: str
+    data: str
+
+
+@dataclass
+class MessageParams(RequiredParams):
+    """
+    Required parameters in a message-style json rpc request
+    """
+
+    message: str
+
+
+@dataclass
+class ParsedJsonRpc:
+    """
+    Base class for all parsed json rpcs
+    """
+
+    eth_method: str
+
+
+@dataclass
+class ParsedTransaction(ParsedJsonRpc):
+    """
+    Dataclass storing all important parsed attributes of a transaction-style JSON RPC request
+    """
+
+    to: bytes
+    data: bytes
+    contract_type: Type[Contract]
+    contract_method: ContractFunction
+    contract_method_args: dict[str, ArgValue]
+
+
+@dataclass
+class ParsedMessage(ParsedJsonRpc):
+    """
+    Dataclass storing all important parsed  attributes of a message-style JSON RPC request
+    """
+
+    message: str
+
+
+@dataclass
+class Request:
     """
     Base abstract Request class
     """
 
-    def __init__(self, eth_method: str, roles: Roles) -> None:
-        self.eth_method = eth_method
-        self.roles = roles
+    json_rpc: ParsedJsonRpc
+    roles: Roles
 
 
-class TransactionRequest(Request):
-    """
-    Complete request, with both transaction info and user role info
-    """
+# class MessageRequest(Request):
+#     """
+#     Request class for message-style JSON RPC calls
+#     """
 
-    def __init__(
-        self, transaction: ParsedTransaction, eth_method: str, roles: list[str]
-    ) -> None:
-        self.transaction = transaction
-        super().__init__(eth_method, roles)
+#     json_rpc: ParsedMessage
 
 
-class MessageRequest(Request):
-    """
-    Wrapper for message requests, as used in sign or personal_sign
-    """
+# class TransactionRequest(Request):
+#     """
+#     Request class for message-style JSON RPC calls
+#     """
 
-    def __init__(self, message: str, eth_method: str, roles: list[str]) -> None:
-        self.message = message
-        super().__init__(eth_method, roles)
+#     json_rpc: ParsedTransaction
 
 
 class ArgumentGroup:
@@ -99,8 +132,10 @@ class ArgumentGroup:
 class PolicyEngineError(Exception):
     """Exception raised while verifying requests"""
 
+
 class ParseError(PolicyEngineError):
     """Exception raised during parsing"""
+
 
 class InvalidPermissionsError(PolicyEngineError):
     """Exception raised when the user doesn't have the required permissions"""

@@ -209,10 +209,52 @@ def permissions_from_yaml(
 
         # explicitly declaring the type, because allowed_eth_methods
         # can hold both AllowedEthContractMethod and AllowedEthMessageMethod
-        allowed_eth_methods : dict[str, AllowedEthMethod] = {}
+        allowed_eth_methods: dict[str, AllowedEthMethod] = {}
         for eth_method_name in transaction_methods:
             allowed_eth_methods[eth_method_name] = allowed_contracts
         for eth_method_name in message_methods:
             allowed_eth_methods[eth_method_name] = allowed_messages
 
         return Verifier(allowed_eth_methods)
+
+
+def eth_methods_from_yaml(filename: str, endstr: str = "_methods") -> dict[str, str]:
+    """
+    Load all recognized eth methods, and what type of parameters they take.
+
+    Arguments:
+        filename: file to load methods from
+
+    Returns:
+        dictionary mapping eth methods to the method type
+
+    This function was designed to be compatible with permissions config. As such, the file must be in the same format.
+    This means that any parameter in the file which does not end with "_methods" is ignored.
+
+    Example:
+
+    .. code-block:: yaml
+
+        transaction_methods:
+            - eth_signTransaction
+            - eth_sendTransaction
+
+        message_methods:
+            - eth_sign
+    """
+    with open(filename, "r") as file_handle:
+        data = yaml.safe_load(file_handle)
+        if type(data) != dict:
+            raise ValueError("File describing eth methods must be a dictionary")
+
+        eth_methods: dict[str, str] = {}
+        for category, methods in data.items():
+            if not category.endswith(endstr):
+                continue
+            category_name = category[: -len(endstr)]
+            for method_name in methods:
+                if type(method_name) != str:
+                    raise ValueError("Non-string method name found")
+                eth_methods[method_name] = category_name
+
+        return eth_methods
