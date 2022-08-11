@@ -238,7 +238,7 @@ class TestPolicyEngine(TestCase):
 
         payload_hex = sig
         for arg in args:
-            payload_hex += format_arg(arg)
+            payload_hex = HexBytes(payload_hex + format_arg(arg))
         payload = payload_hex.hex()
 
         json_rpc = {
