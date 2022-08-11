@@ -6,6 +6,7 @@ from web3_policy_engine.parse_transaction import (
     Parser,
     MessageParser,
     TransactionParser,
+    parse,
 )
 from web3_policy_engine.loader import method_signature
 
@@ -56,6 +57,32 @@ class TestParser(TestCase):
             ],
         }
         res = parser.parse(json_rpc)
+
+        self.assertEqual(res.contract_type, contract)  # type: ignore
+        self.assertEqual(res.contract_method.fn_name, "testmethod1")  # type: ignore
+        self.assertEqual(len(res.contract_method_args.keys()), 1)  # type: ignore
+        self.assertEqual(res.contract_method_args["_arg1"], 6)  # type: ignore
+
+    def test_parse_function_basic(self):
+        contract = make_basic_contract()
+        contract_address = "0x1234123412341234123412341234123412341234"
+        contract_addresses = {contract_address: contract}
+
+        payload = method_signature(contract.functions.testmethod1)
+        payload += HexBytes(
+            "0x0000000000000000000000000000000000000000000000000000000000000006"
+        )
+
+        json_rpc = {
+            "method": "eth_sendTransaction",
+            "params": [
+                {
+                    "data": payload,
+                    "to": contract_address,
+                }
+            ],
+        }
+        res = parse(json_rpc, contracts=contract_addresses)
 
         self.assertEqual(res.contract_type, contract)  # type: ignore
         self.assertEqual(res.contract_method.fn_name, "testmethod1")  # type: ignore
