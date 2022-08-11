@@ -940,7 +940,7 @@ types-urllib3 = "<1.27"
 
 [[package]]
 name = "types-setuptools"
-version = "63.4.0"
+version = "63.4.1"
 description = "Typing stubs for setuptools"
 category = "dev"
 optional = false
@@ -966,7 +966,7 @@ python-versions = ">=3.7"
 name = "unittest"
 version = "0.0"
 description = ""
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -1053,7 +1053,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "362d2675f687caaef7782755462640e837e305f5030d0c441f21d2aa37d5d0e5"
+content-hash = "14e8a72cd588478aa13d6851fe71b06b233adbcfb6fd6156ab1f8fd0d51f3399"
 
 [metadata.files]
 aiohttp = [

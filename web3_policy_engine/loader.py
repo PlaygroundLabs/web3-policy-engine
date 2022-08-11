@@ -57,13 +57,13 @@ def contract_addresses_from_json(
     """
     Load contract ABIs and registered deployment addresses.
 
-    :param filename: JSON file containing ABI filenames and addresses for each contract type (see below).
-    :returns:
+    Args:
+        filename: JSON file containing ABI filenames and addresses for each contract type (see below).
 
+    Returns:
         1. dictionary mapping contract names to ABI information
         2. dictionary mapping deployment addresses to ABI information
 
-    :rtype: tuple[dict[str, Type[Contract]], dict[bytes, Type[Contract]]]
 
     Input JSON files must contain two variables: contract_names, and addresses. The format is as follows:
 
@@ -96,10 +96,11 @@ def argument_groups_from_yaml(filename: str) -> dict[str, ArgumentGroup]:
     """
     Load an argument group from a yaml file.
 
-    :param filename: yaml file
-    :type filename: str
-    :returns: dictionary mapping group names to groups
-    :rtype: dict[str, ArgumentGroup]
+    Args:
+        filename: yaml file
+    
+    Returns:
+        dictionary mapping group names to groups
 
     Expected format of file is:
 

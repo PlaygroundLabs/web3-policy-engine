@@ -70,15 +70,7 @@ Changes in a group will be reflected in the policy engine without modification t
 
 This library supports specifing argument groups through json or yaml files. Linking an argument group to a database is not supported out of the box, but can be extended.
 
-Loading argument groups from files is done with the argument_groups_from_yaml function:
-
-.. autofunction:: web3_policy_engine.loader.argument_groups_from_yaml
-
-All argument groups must inherit from the base ArgumentGroup class.
-
-.. autoclass:: web3_policy_engine.contract_common.ArgumentGroup
-.. automethod:: web3_policy_engine.contract_common.ArgumentGroup.__init__
-.. automethod:: web3_policy_engine.contract_common.ArgumentGroup.contains
+Loading argument groups from files is done with :py:meth:`web3_policy_engine.loader.argument_groups_from_yaml`.
 
 To add custom argument groups (e.g. to link argument groups to a database), extend the ArgumentGroup class:
 
@@ -125,6 +117,4 @@ Contracts and contract addresses
 For each contract type described in the permissions configuration, an ABI for the contract must be loaded.
 Additionally, all deployments of smart contracts must be registered, so that the address is recognized.
 
-The provided function to load this information from a file is contract_addresses_from_json:
-
-.. automethod:: web3_policy_engine.loader.contract_addresses_from_json
+This information is loaded in through :py:meth:`web3_policy_engine.loader.contract_addresses_from_json`.
