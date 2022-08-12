@@ -193,3 +193,58 @@ class Parser:
             raise ParseError(f"Eth method not recognized: {method}")
 
         return self.eth_method_parsers[method].parse(input_json_rpc)
+
+
+def make_basic_parser(contracts: dict[bytes, Type[Contract]] = {}) -> Parser:
+    """
+    Create a basic parser capable of parsing a handful of JSON RPC methods.
+
+    Currently supported methods are:
+
+        1. eth_sendTransaction
+        2. eth_signTransaction
+        3. eth_sign
+        4. personal_sign (from GETH)
+
+    Args:
+        contracts: dictionary mapping known deployment addresses to contract ABI info
+
+    Returns:
+        parser capable of parsing above methods
+    """
+    contract_parser = TransactionParser(contracts)
+
+    parser = Parser(
+        {
+            "eth_sendTransaction": contract_parser,
+            "eth_signTransaction": contract_parser,
+            "eth_sign": MessageParser(),
+            "personal_sign": MessageParser(message_index=0),
+        }
+    )
+    return parser
+
+
+def parse(
+    json_rpc: JSON_RPC, contracts: dict[str, Type[Contract]] = {}
+) -> ParsedJsonRpc:
+    """
+    Parse a transaction-style or message-style JSON RPC request.
+    By default, only supports a handful of json rpc methods.
+
+    Args:
+        json_rpc: raw JSON RPC to parse
+        contracts: dictionary mapping known deployment addresses to contract ABI info
+
+    Returns:
+        fully parsed json rpc
+
+    Raises:
+        ParseError: if an error arises during parsing
+    """
+    contracts_bytes = {
+        bytes(HexBytes(contract_addr)): contract
+        for contract_addr, contract in contracts.items()
+    }
+    parser = make_basic_parser(contracts_bytes)
+    return parser.parse(json_rpc)
