@@ -585,6 +585,14 @@ optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 
 [[package]]
+name = "pbr"
+version = "5.10.0"
+description = "Python Build Reasonableness"
+category = "dev"
+optional = false
+python-versions = ">=2.6"
+
+[[package]]
 name = "platformdirs"
 version = "2.5.2"
 description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
@@ -825,6 +833,18 @@ sphinx = ">=1.6"
 dev = ["bump2version", "sphinxcontrib-httpdomain", "transifex-client"]
 
 [[package]]
+name = "sphinxcontrib-apidoc"
+version = "0.3.0"
+description = "A Sphinx extension for running 'sphinx-apidoc' on each build"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+pbr = "*"
+Sphinx = ">=1.6.0"
+
+[[package]]
 name = "sphinxcontrib-applehelp"
 version = "1.0.2"
 description = "sphinxcontrib-applehelp is a sphinx extension which outputs Apple help books"
@@ -1053,7 +1073,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "14e8a72cd588478aa13d6851fe71b06b233adbcfb6fd6156ab1f8fd0d51f3399"
+content-hash = "0060a99392ce2df384d03981c66500196e83c36da80cd75f9bf32523fd659b81"
 
 [metadata.files]
 aiohttp = [
@@ -1349,6 +1369,7 @@ pathspec = [
     {file = "pathspec-0.9.0-py2.py3-none-any.whl", hash = "sha256:7d15c4ddb0b5c802d161efc417ec1a2558ea2653c2e8ad9c19098201dc1c993a"},
     {file = "pathspec-0.9.0.tar.gz", hash = "sha256:e564499435a2673d586f6b2130bb5b95f04a3ba06f81b8f895b651a3c76aabb1"},
 ]
+pbr = []
 platformdirs = [
     {file = "platformdirs-2.5.2-py3-none-any.whl", hash = "sha256:027d8e83a2d7de06bbac4e5ef7e023c02b863d7ea5d079477e722bb41ab25788"},
     {file = "platformdirs-2.5.2.tar.gz", hash = "sha256:58c8abb07dcb441e6ee4b11d8df0ac856038f944ab98b7be6b27b2a3c7feef19"},
@@ -1516,6 +1537,7 @@ six = [
 snowballstemmer = []
 sphinx = []
 sphinx-rtd-theme = []
+sphinxcontrib-apidoc = []
 sphinxcontrib-applehelp = []
 sphinxcontrib-devhelp = []
 sphinxcontrib-htmlhelp = []

@@ -23,11 +23,17 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
+    "sphinxcontrib.apidoc",
 ]
 
 autodoc_typehints = "both"
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+apidoc_module_dir = "../web3_policy_engine"
+apidoc_output_dir = "reference"
+# apidoc_excluded_paths = []
+apidoc_separate_modules = True
 
 
 # -- Options for HTML output -------------------------------------------------

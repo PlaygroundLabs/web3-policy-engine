@@ -9,6 +9,6 @@ Welcome to Web3 Policy Engine's documentation!
 .. toctree::
 
    Home <self>
-   web3_policy_engine
+   API <reference/modules.rst>
    usage
    configuration
