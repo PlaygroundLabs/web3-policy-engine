@@ -11,12 +11,7 @@ The goal of this project is to create a policy engine which judges transaction r
 
 imports:
 ```python
-from hexbytes import HexBytes
-from web3 import Web3
-
-from web3_policy_engine import (InputTransaction,
-                                InvalidPermissionsError,
-                                PolicyEngine)
+from web3_policy_engine import PolicyEngine, PolicyEngineError
 ```
 
 addresses.json (this simulates a database):
@@ -50,30 +45,34 @@ scholars_group2:
 
 ## permissions.yml:
 ```yaml
-ERC20:
-  approve:
-    - manager:
-        _spender:
-          - scholars_group1
-          - scholars_group2
-  transferFrom:
-    - manager:
-        _sender:
-          - scholars_group1
-          - scholars_group2
-        _recipient:
-          - scholars_group1
-          - scholars_group2
-    - scholar_group1:
-        _sender:
-          - scholars_group1
-        _recipient:
-          - scholars_group1
-    - scholar_group2:
-        _sender:
-          - scholars_group2
-        _recipient:
-          - scholars_group2
+transactions:
+  ERC20:
+    approve:
+      _spender:
+        scholars_group1:
+          - group1_manager
+        scholars_group2:
+          - group2_manager
+    transferFrom:
+      _sender:
+        scholars_group1:
+          - group1_manager
+        scholars_group2:
+          - group2_manager
+      _recipient:
+        scholars_group1:
+          -group1_manager
+        scholars_group2:
+          -group2_manager
+
+messages: {}
+
+transaction_methods:
+  - eth_signTransaction
+  - eth_sendTransaction
+
+message_methods:
+  - eth_sign
 ```
 
 
@@ -82,34 +81,27 @@ Given the above configuration, you can build the policy engine with the followin
 policy_engine = PolicyEngine("addresses.json", "permissions.yml", "groups.yml")
 ```
 
-Building a transaction using web3 is a little tricky. Fortunately, this step is only used for testing, as in deployment, raw transactions are inputted
+Test with a sample transaction, approving address 0x1021021021021021021021021021021021021021 to transfer 100 tokens.
 ```python
-# get ERC20 contract from the policy engine
-# (this address defined to be an ERC20 contract in addresses.json)
-contract_address = bytes(HexBytes("0x1111111111111111111111111111111111111111"))
-ERC20 = policy_engine.parser.contracts[contract_address]
-
-def get_transaction_data(sender: bytes, receiver: bytes) -> bytes:
-    # set some dummy transaction parameters for building the transaction later
-    tx_params = {
-        "gas": 100000000,
-        "maxFeePerGas": 100000000,
-        "maxPriorityFeePerGas": 100000000,
-        "chainId": 420,
-        "to": Web3.toChecksumAddress(contract_address),
-    }
-
-    # build a transaction, and compute the raw data
-    transaction = ERC20.functions.transferFrom(sender, receiver, amount)
-    tx_data = transaction.buildTransaction(tx_params)["data"]
-    return tx_data
+json_rpc = {
+    "id": 1,
+    "json_rpc": "2.0",
+    "method": "eth_sendTransaction",
+    "params": [{
+      "data": "0x095ea7b300000000000000000000000010210210210210210210210210210210210210210000000000000000000000000000000000000000000000000000000000000064",
+      "from": "0x2222222222222222222222222222222222222222",
+      "to": "0x1111111111111111111111111111111111111111",
+      "gasPrice": "0x70657586c",
+    }]
+  }
 ```
 
-to verify a transaction, call policy_engine.verify() with the transaction data and the list of roles. It will either return True, or raise an error.
+to verify a transaction, call policy_engine.verify() with the transaction data and the list of roles. It will either return True, or raise an error. This example should be a good transaction.
 ```python
+roles = ["group1_manager"]
 try:
-    policy_engine.verify(InputTransaction(contract_address, tx_data), roles)
+    policy_engine.verify(json_rpc, roles)
     print("Good transaction")
-except InvalidPermissionsError:
+except PolicyEngineError:
     print("Wrong permissions")
 ```
