@@ -8,6 +8,7 @@ authors = ["Daniel Neshyba-Rowe <daniel.rowe@playgroundlabs.io>"]
 python = "^3.10"
 web3 = "^5.29.2"
 PyYAML = "^6.0"
+sphinxcontrib-apidoc = "^0.3.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
